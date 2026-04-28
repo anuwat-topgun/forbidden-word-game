@@ -1,46 +1,77 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>เกมส์คำต้องห้าม</title>
+
   <style>
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
+      width: 100vw;
       height: 100vh;
+      overflow: hidden;
       display: flex;
       justify-content: center;
       align-items: center;
       font-family: Arial, sans-serif;
       background: #000;
       color: #fff;
-      flex-direction: column;
     }
 
-    #word {
-      font-size: 120px;
-      display: none;
+    #container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    #word, #countdown {
+      font-size: 12vw;
       text-align: center;
     }
 
-    #countdown {
-      font-size: 100px;
+    #word { display: none; }
+
+    #rotate {
+      position: absolute;
+      inset: 0;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      font-size: 24px;
+      padding: 20px;
+      background: #000;
     }
 
     button {
       position: absolute;
-      bottom: 30px;
-      font-size: 20px;
+      bottom: 20px;
+      font-size: 18px;
       padding: 10px 20px;
+    }
+
+    /* ❌ ถ้าเป็นแนวตั้ง ให้ซ่อนเกม */
+    @media (orientation: portrait) {
+      #rotate { display: flex; }
+      #container > *:not(#rotate) { display: none !important; }
     }
   </style>
 </head>
 <body>
 
-  <div id="countdown"></div>
-  <div id="word"></div>
+  <div id="container">
+    <div id="countdown"></div>
+    <div id="word"></div>
+    <div id="rotate">กรุณาหมุนหน้าจอเป็นแนวนอน</div>
 
-  <button id="btn" onclick="startGame()">สุ่มคำ</button>
+    <button id="btn" onclick="startGame()">สุ่มคำ</button>
+  </div>
 
   <script>
     const words = [
@@ -89,6 +120,13 @@
         }
       }, 1000);
     }
+
+    // 📱 พยายามบังคับ fullscreen (บาง browser จะ block ถ้าไม่กด)
+    document.body.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    });
   </script>
 
 </body>
