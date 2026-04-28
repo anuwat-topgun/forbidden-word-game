@@ -66,6 +66,14 @@
       #rotate { display: flex; }
       #container > *:not(#rotate) { display: none !important; }
     }
+  
+    #version {
+      position: absolute;
+      right: 10px;
+      bottom: 5px;
+      font-size: 12px;
+      opacity: 0.6;
+    }
   </style>
 </head>
 <body>
@@ -76,10 +84,11 @@
     <div id="rotate">กรุณาหมุนหน้าจอเป็นแนวนอน</div>
 
     <button id="btn" onclick="startGame()">สุ่มคำ</button>
+      <div id="version">v1.0.0</div>
   </div>
 
   <script>
-let words = [
+    let words = [
       "กิน","นอน","เดิน","วิ่ง","พูด","คิด","ทำ","ไป","มา","อยู่",
       "ดู","ฟัง","เล่น","ใช้","ให้","เอา","มี","เป็น","รู้","เข้าใจ",
       "รัก","ชอบ","เกลียด","โกรธ","ดีใจ","เสียใจ","กลัว","เขิน","งง","เบื่อ",
