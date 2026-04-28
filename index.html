@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#000000">
+  <link rel="apple-touch-icon" href="icon.png">
+
   <title>เกมส์คำต้องห้าม</title>
 
   <style>
@@ -56,7 +62,6 @@
       padding: 10px 20px;
     }
 
-    /* ❌ ถ้าเป็นแนวตั้ง ให้ซ่อนเกม */
     @media (orientation: portrait) {
       #rotate { display: flex; }
       #container > *:not(#rotate) { display: none !important; }
@@ -77,17 +82,11 @@
     const words = [
       "กิน","นอน","เดิน","วิ่ง","พูด","คิด","ทำ","ไป","มา","อยู่",
       "ดู","ฟัง","เล่น","ใช้","ให้","เอา","มี","เป็น","รู้","เข้าใจ",
-
       "รัก","ชอบ","เกลียด","โกรธ","ดีใจ","เสียใจ","กลัว","เขิน","งง","เบื่อ",
-
       "ข้าว","น้ำ","บ้าน","ห้อง","งาน","เรียน","เงิน","เวลา","เพื่อน","แฟน",
       "มือถือ","เกม","หนัง","เพลง","รถ","ถนน","ร้าน","ตลาด","โรงเรียน","ออฟฟิศ",
-
       "แบบ","คือ","แล้ว","ก็","เออ","อืม","จริง","ใช่","ไม่","ได้",
-      "เลย","มาก","นิด","หน่อย","ก่อน","หลัง","วันนี้","พรุ่งนี้","เมื่อวาน",
-
-      "ใหญ่","เล็ก","ร้อน","เย็น","เร็ว","ช้า","หนัก","เบา","ใหม่","เก่า",
-      "ดี","แย่","ง่าย","ยาก","ใกล้","ไกล","เต็ม","ว่าง"
+      "ใหญ่","เล็ก","ร้อน","เย็น","เร็ว","ช้า","หนัก","เบา","ใหม่","เก่า"
     ];
 
     function startGame() {
@@ -121,13 +120,53 @@
       }, 1000);
     }
 
-    // 📱 พยายามบังคับ fullscreen (บาง browser จะ block ถ้าไม่กด)
-    document.body.addEventListener('click', () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
-    });
+    // register service worker (optional but recommended)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
   </script>
 
 </body>
 </html>
+
+<!-- ===== สร้างไฟล์เพิ่ม =====
+
+1. manifest.json
+
+{
+  "name": "Forbidden Word Game",
+  "short_name": "Game",
+  "start_url": "/",
+  "display": "fullscreen",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
+2. icon.png
+- ใช้รูปสี่เหลี่ยม 512x512
+- พื้นหลังดำ + ตัวอักษรขาว เช่น "GAME"
+
+3. sw.js (service worker)
+
+self.addEventListener('install', e => {
+  self.skipWaiting();
+});
+
+self.addEventListener('fetch', () => {});
+
+===== วิธีใช้ =====
+เปิดเว็บ → กด Add to Home Screen → เปิดจากไอคอน = fullscreen จริง
+
+-->
