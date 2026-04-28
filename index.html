@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>เกมส์คำต้องห้าม</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
+      flex-direction: column;
+    }
+
+    #word {
+      font-size: 120px;
+      display: none;
+      text-align: center;
+    }
+
+    #countdown {
+      font-size: 100px;
+    }
+
+    button {
+      position: absolute;
+      bottom: 30px;
+      font-size: 20px;
+      padding: 10px 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="countdown"></div>
+  <div id="word"></div>
+
+  <button id="btn" onclick="startGame()">สุ่มคำ</button>
+
+  <script>
+    const words = [
+      "กิน","นอน","เดิน","วิ่ง","พูด","คิด","ทำ","ไป","มา","อยู่",
+      "ดู","ฟัง","เล่น","ใช้","ให้","เอา","มี","เป็น","รู้","เข้าใจ",
+
+      "รัก","ชอบ","เกลียด","โกรธ","ดีใจ","เสียใจ","กลัว","เขิน","งง","เบื่อ",
+
+      "ข้าว","น้ำ","บ้าน","ห้อง","งาน","เรียน","เงิน","เวลา","เพื่อน","แฟน",
+      "มือถือ","เกม","หนัง","เพลง","รถ","ถนน","ร้าน","ตลาด","โรงเรียน","ออฟฟิศ",
+
+      "แบบ","คือ","แล้ว","ก็","เออ","อืม","จริง","ใช่","ไม่","ได้",
+      "เลย","มาก","นิด","หน่อย","ก่อน","หลัง","วันนี้","พรุ่งนี้","เมื่อวาน",
+
+      "ใหญ่","เล็ก","ร้อน","เย็น","เร็ว","ช้า","หนัก","เบา","ใหม่","เก่า",
+      "ดี","แย่","ง่าย","ยาก","ใกล้","ไกล","เต็ม","ว่าง"
+    ];
+
+    function startGame() {
+      const btn = document.getElementById("btn");
+      const countdownEl = document.getElementById("countdown");
+      const wordEl = document.getElementById("word");
+
+      const randomWord = words[Math.floor(Math.random() * words.length)];
+
+      let count = 5;
+      btn.disabled = true;
+
+      wordEl.style.display = "none";
+      countdownEl.style.display = "block";
+      countdownEl.innerText = count;
+
+      const interval = setInterval(() => {
+        count--;
+
+        if (count > 0) {
+          countdownEl.innerText = count;
+        } else {
+          clearInterval(interval);
+
+          countdownEl.style.display = "none";
+          wordEl.innerText = randomWord;
+          wordEl.style.display = "block";
+
+          btn.disabled = false;
+        }
+      }, 1000);
+    }
+  </script>
+
+</body>
+</html>
