@@ -79,7 +79,7 @@
   </div>
 
   <script>
-    const words = [
+    let words = [
       "กิน","นอน","เดิน","วิ่ง","พูด","คิด","ทำ","ไป","มา","อยู่",
       "ดู","ฟัง","เล่น","ใช้","ให้","เอา","มี","เป็น","รู้","เข้าใจ",
       "รัก","ชอบ","เกลียด","โกรธ","ดีใจ","เสียใจ","กลัว","เขิน","งง","เบื่อ",
@@ -104,11 +104,21 @@
     ];
 
     function startGame() {
+      // ถ้าคำหมดแล้ว รีเซ็ตใหม่
+      if (words.length === 0) {
+        alert("คำถูกใช้ครบแล้ว! รีเซ็ตใหม่");
+        location.reload();
+        return;
+      }
       const btn = document.getElementById("btn");
       const countdownEl = document.getElementById("countdown");
       const wordEl = document.getElementById("word");
 
-      const randomWord = words[Math.floor(Math.random() * words.length)];
+      const index = Math.floor(Math.random() * words.length);
+      const randomWord = words[index];
+
+      // ❌ ลบคำที่สุ่มออกไป (กันซ้ำ)
+      words.splice(index, 1);
 
       let count = 5;
       btn.disabled = true;
