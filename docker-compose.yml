@@ -1,8 +1,12 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: werewolf-game
+    container_name: werewolf-game
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -11,4 +15,10 @@ services:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
       interval: 30s
       timeout: 5s
+      start_period: 10s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
