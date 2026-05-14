@@ -6,557 +6,524 @@
   <title>🐺 Werewolf</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #0d0d0d; color: #fff; min-height: 100vh; display: flex; justify-content: center; }
 
-    body {
-      font-family: Arial, sans-serif;
-      background: #0d0d0d;
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-    }
-
-    .screen {
-      display: none;
-      width: 100%;
-      max-width: 480px;
-      min-height: 100vh;
-      flex-direction: column;
-      padding: 24px 20px env(safe-area-inset-bottom, 20px);
-      gap: 14px;
-    }
+    .screen { display: none; width: 100%; max-width: 480px; min-height: 100vh; flex-direction: column; padding: 20px 18px env(safe-area-inset-bottom, 20px); gap: 12px; }
     .screen.active { display: flex; }
 
-    h2 { font-size: 26px; text-align: center; }
-    h3 { font-size: 19px; color: #ccc; }
+    h2 { font-size: 24px; text-align: center; }
+    h3 { font-size: 17px; color: #bbb; }
 
-    input[type="text"] {
-      width: 100%;
-      padding: 14px 16px;
-      font-size: 18px;
-      border: 2px solid #333;
-      border-radius: 12px;
-      background: #1a1a1a;
-      color: #fff;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    input[type="text"]:focus { border-color: #666; }
+    input[type=text] { width: 100%; padding: 13px 15px; font-size: 17px; border: 2px solid #2a2a2a; border-radius: 12px; background: #161616; color: #fff; outline: none; transition: border-color .2s; }
+    input[type=text]:focus { border-color: #555; }
 
-    .btn {
-      width: 100%;
-      padding: 16px;
-      font-size: 18px;
-      font-weight: bold;
-      border: 2px solid #fff;
-      border-radius: 14px;
-      background: transparent;
-      color: #fff;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-    .btn:active { background: #fff; color: #000; }
-    .btn-primary { background: #fff; color: #000; border-color: #fff; }
-    .btn-primary:active { background: #ccc; }
-    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn { width: 100%; padding: 15px; font-size: 17px; font-weight: bold; border: 2px solid #fff; border-radius: 13px; background: transparent; color: #fff; cursor: pointer; transition: background .15s, color .15s; }
+    .btn:active:not(:disabled) { background: #fff; color: #000; }
+    .btn.primary { background: #fff; color: #000; }
+    .btn.primary:active { background: #ccc; }
+    .btn.danger { border-color: #e74c3c; color: #e74c3c; }
+    .btn.danger:active { background: #e74c3c; color: #fff; }
+    .btn.green  { border-color: #27ae60; color: #27ae60; }
+    .btn.green:active { background: #27ae60; color: #fff; }
+    .btn.muted  { border-color: #333; color: #555; font-size: 14px; }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
 
-    .divider {
-      text-align: center;
-      color: #444;
-      font-size: 14px;
-      position: relative;
-      line-height: 1;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      width: 42%;
-      height: 1px;
-      background: #2a2a2a;
-    }
-    .divider::before { left: 0; }
-    .divider::after { right: 0; }
+    .divider { text-align: center; color: #444; font-size: 13px; position: relative; line-height: 1; }
+    .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 42%; height: 1px; background: #222; }
+    .divider::before { left: 0; } .divider::after { right: 0; }
 
-    .error { color: #e74c3c; text-align: center; font-size: 15px; min-height: 18px; }
+    .err { color: #e74c3c; text-align: center; font-size: 14px; min-height: 16px; }
 
-    /* Lobby */
+    /* lobby */
+    .room-code { display: inline-block; font-size: 42px; font-weight: bold; letter-spacing: 10px; color: #f1c40f; border: 3px solid #f1c40f; border-radius: 14px; padding: 10px 20px; cursor: pointer; }
     .room-code-wrap { text-align: center; }
-    .room-code-label { color: #666; font-size: 13px; margin-bottom: 6px; }
-    .room-code {
-      display: inline-block;
-      font-size: 44px;
-      font-weight: bold;
-      letter-spacing: 10px;
-      color: #f1c40f;
-      border: 3px solid #f1c40f;
-      border-radius: 14px;
-      padding: 10px 20px;
-      cursor: pointer;
-      user-select: all;
-    }
-    .copy-hint { color: #555; font-size: 12px; margin-top: 4px; }
+    .copy-hint { color: #555; font-size: 11px; margin-top: 4px; }
+    .sec-title { color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .player-row { padding: 11px 14px; background: #161616; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #222; color: #777; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; background: #161616; border-radius: 12px; }
+    .toggle-label { font-size: 15px; }
+    .toggle { position: relative; width: 44px; height: 24px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: #333; border-radius: 24px; cursor: pointer; transition: .3s; }
+    .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .3s; }
+    input:checked + .toggle-slider { background: #f1c40f; }
+    input:checked + .toggle-slider::before { transform: translateX(20px); }
 
-    .section-title { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+    /* role card */
+    .role-card { text-align: center; padding: 26px 18px; border: 2px solid #2a2a2a; border-radius: 18px; background: #111; }
+    .role-emoji { font-size: 72px; }
+    .role-name  { font-size: 28px; font-weight: bold; margin: 10px 0 6px; }
+    .role-desc  { color: #888; font-size: 14px; line-height: 1.6; }
+    .role-team  { margin-top: 10px; font-size: 14px; font-weight: bold; }
+    .role-team.wolf   { color: #e74c3c; }
+    .role-team.mason  { color: #3498db; }
+    .role-team.minion { color: #e67e22; }
+    .countdown { font-size: 56px; font-weight: bold; text-align: center; color: #f1c40f; line-height: 1; }
+    .count-sub  { text-align: center; color: #444; font-size: 13px; margin-top: 3px; }
 
-    .player-list { display: flex; flex-direction: column; gap: 8px; }
-    .player-item {
-      padding: 12px 16px;
-      background: #1a1a1a;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 16px;
-    }
-    .badge {
-      font-size: 12px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      background: #2a2a2a;
-      color: #888;
-    }
+    /* phase banners */
+    .banner { text-align: center; padding: 11px 14px; border-radius: 12px; font-size: 17px; font-weight: bold; }
+    .banner.night { background: #07071a; border: 2px solid #3a3aff; color: #8888ff; }
+    .banner.day   { background: #1a1000; border: 2px solid #f39c12; color: #f39c12; }
+    .banner.mod   { background: #001a0a; border: 2px solid #27ae60; color: #27ae60; }
 
-    /* Role reveal */
-    .role-card {
-      text-align: center;
-      padding: 28px 20px;
-      border: 2px solid #333;
-      border-radius: 20px;
-      background: #141414;
-    }
-    .role-emoji { font-size: 76px; }
-    .role-name { font-size: 30px; font-weight: bold; margin: 10px 0 8px; }
-    .role-desc { color: #999; font-size: 15px; line-height: 1.6; }
-    .role-team { margin-top: 12px; color: #e74c3c; font-size: 15px; font-weight: bold; }
+    /* action lists */
+    .act-list { display: flex; flex-direction: column; gap: 9px; }
+    .act-btn { padding: 13px 14px; background: #161616; border: 2px solid #2a2a2a; border-radius: 12px; color: #fff; font-size: 15px; cursor: pointer; text-align: left; width: 100%; transition: border-color .15s; }
+    .act-btn:active:not(:disabled) { border-color: #666; }
+    .act-btn.picked  { border-color: #f1c40f; background: #1a1500; }
+    .act-btn.voted   { border-color: #27ae60; background: #071510; }
+    .act-btn.neutral { border-color: #555; color: #aaa; }
+    .act-btn:disabled { opacity: .35; cursor: not-allowed; }
 
-    .countdown-ring {
-      text-align: center;
-      font-size: 60px;
-      font-weight: bold;
-      color: #f1c40f;
-      line-height: 1;
-    }
-    .countdown-label { text-align: center; color: #555; font-size: 14px; margin-top: 4px; }
+    /* info boxes */
+    .info-box { border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+    .info-box.wolf   { background: #150000; border: 2px solid #6b0000; color: #ff7070; }
+    .info-box.seer   { background: #110020; border: 2px solid #7b33c0; color: #d0a0f0; }
+    .info-box.green  { background: #071510; border: 2px solid #27ae60; color: #82e0aa; }
+    .info-box.orange { background: #150a00; border: 2px solid #e67e22; color: #f0b060; }
+    .info-box.yellow { background: #141000; border: 2px solid #f1c40f; color: #f0d060; }
 
-    /* Phase banner */
-    .phase-banner {
-      text-align: center;
-      padding: 12px 16px;
-      border-radius: 12px;
-      font-size: 18px;
-      font-weight: bold;
-    }
-    .phase-night { background: #0a0a1e; border: 2px solid #3a3aff; color: #9b9bff; }
-    .phase-day   { background: #1e1200; border: 2px solid #f39c12; color: #f39c12; }
+    /* announcements */
+    .ann { text-align: center; padding: 18px 14px; border-radius: 14px; background: #111; border: 2px solid #222; }
+    .ann.death  { border-color: #c0392b; background: #130000; }
+    .ann.safe   { border-color: #27ae60; background: #071510; }
+    .ann.vote   { border-color: #e67e22; background: #130800; }
+    .ann-icon   { font-size: 38px; }
+    .ann-title  { font-size: 19px; font-weight: bold; margin-top: 8px; }
+    .ann-sub    { color: #999; font-size: 14px; margin-top: 5px; }
 
-    /* Action buttons (night targets / vote targets) */
-    .action-list { display: flex; flex-direction: column; gap: 10px; }
-    .action-btn {
-      padding: 14px 16px;
-      background: #1a1a1a;
-      border: 2px solid #333;
-      border-radius: 12px;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-      text-align: left;
-      width: 100%;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .action-btn:active:not(:disabled) { border-color: #888; background: #222; }
-    .action-btn.selected { border-color: #f1c40f; background: #1e1800; }
-    .action-btn.voted    { border-color: #27ae60; background: #0a1e10; }
-    .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    /* vote progress */
+    .vbar-wrap { background: #181818; border-radius: 6px; overflow: hidden; height: 5px; }
+    .vbar      { height: 100%; background: #27ae60; transition: width .3s; border-radius: 6px; }
+    .vbar-label { text-align: center; color: #555; font-size: 13px; }
 
-    /* Wolf team info */
-    .wolf-info-box {
-      background: #1a0000;
-      border: 2px solid #8b0000;
-      border-radius: 12px;
-      padding: 12px 16px;
-      color: #ff6b6b;
-      font-size: 14px;
-    }
+    /* game over */
+    .go-banner { text-align: center; padding: 22px; border-radius: 16px; font-size: 24px; font-weight: bold; }
+    .go-banner.wolf    { background: #130000; border: 3px solid #e74c3c; }
+    .go-banner.village { background: #071510; border: 3px solid #27ae60; }
+    .go-banner.tanner  { background: #150a00; border: 3px solid #e67e22; }
+    .go-result { padding: 11px 14px; background: #111; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+    .go-result.dead { opacity: .4; }
 
-    /* Seer result */
-    .seer-result-box {
-      background: #120020;
-      border: 2px solid #8e44ad;
-      border-radius: 14px;
-      padding: 20px;
-      text-align: center;
-    }
+    /* tags */
+    .tag { font-size: 12px; padding: 2px 9px; border-radius: 20px; white-space: nowrap; }
+    .tag.werewolf  { background: #3a0000; color: #ff7070; }
+    .tag.villager  { background: #1a1a1a; color: #aaa; }
+    .tag.seer      { background: #1a0040; color: #c39bd3; }
+    .tag.bodyguard { background: #00233a; color: #7ecef0; }
+    .tag.hunter    { background: #1a1000; color: #f0b050; }
+    .tag.witch     { background: #1a0020; color: #d080e0; }
+    .tag.mason     { background: #001533; color: #80b0ff; }
+    .tag.minion    { background: #230010; color: #ff9060; }
+    .tag.tanner    { background: #1a1000; color: #d4ac6a; }
+    .tag.moderator { background: #001a0a; color: #82e0aa; }
 
-    /* Announcement */
-    .announcement {
-      text-align: center;
-      padding: 20px 16px;
-      border-radius: 14px;
-      background: #141414;
-      border: 2px solid #333;
-    }
-    .announcement.death { border-color: #e74c3c; background: #1a0000; }
-    .announcement.safe  { border-color: #27ae60; background: #001a09; }
-    .announcement.vote-out { border-color: #e67e22; background: #1a0d00; }
-
-    /* Vote progress */
-    .vote-bar-wrap { background: #1a1a1a; border-radius: 8px; overflow: hidden; height: 6px; }
-    .vote-bar { height: 100%; background: #27ae60; transition: width 0.3s; border-radius: 8px; }
-    .vote-label { text-align: center; color: #666; font-size: 14px; }
-
-    /* Game over */
-    .winner-banner {
-      text-align: center;
-      padding: 24px;
-      border-radius: 18px;
-      font-size: 26px;
-      font-weight: bold;
-    }
-    .winner-wolf    { background: #1a0000; border: 3px solid #e74c3c; }
-    .winner-village { background: #001a09; border: 3px solid #27ae60; }
-
-    .result-row {
-      padding: 12px 16px;
-      background: #141414;
-      border-radius: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 15px;
-    }
-    .result-row.dead { opacity: 0.45; }
-
-    .tag {
-      font-size: 13px;
-      padding: 3px 10px;
-      border-radius: 20px;
-      white-space: nowrap;
-    }
-    .tag-werewolf { background: #4a0000; color: #ff6b6b; }
-    .tag-seer     { background: #1e0044; color: #c39bd3; }
-    .tag-doctor   { background: #002212; color: #82e0aa; }
-    .tag-villager { background: #222;    color: #aaa; }
+    /* moderator panel */
+    .mod-player-row { padding: 10px 13px; background: #111; border-radius: 9px; display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+    .mod-player-row.dead { opacity: .4; }
 
     .spacer { flex: 1; }
-
-    .waiting-msg {
-      text-align: center;
-      color: #555;
-      font-size: 16px;
-      padding: 20px 0;
-    }
-    .waiting-msg .icon { font-size: 48px; margin-bottom: 12px; }
-
-    .info-row { text-align: center; color: #555; font-size: 14px; }
+    .idle-msg { text-align: center; color: #444; padding: 32px 0; font-size: 17px; }
+    .idle-icon { font-size: 52px; margin-bottom: 12px; }
+    .center { text-align: center; }
   </style>
 </head>
 <body>
 
-<!-- ══ 1. HOME ══ -->
+<!-- ══ HOME ══ -->
 <div id="s-home" class="screen active">
-  <div style="padding-top: 40px; text-align: center;">
-    <div style="font-size: 72px;">🐺</div>
-    <div style="font-size: 32px; font-weight: bold; margin-top: 8px;">Werewolf</div>
-    <div style="color: #555; font-size: 14px; margin-top: 4px;">4–12 ผู้เล่น</div>
+  <div style="padding-top:36px;text-align:center">
+    <div style="font-size:68px">🐺</div>
+    <div style="font-size:30px;font-weight:bold;margin-top:6px">Werewolf</div>
+    <div style="color:#444;font-size:13px;margin-top:3px">4–12 ผู้เล่น</div>
   </div>
-
   <input id="inp-name" type="text" placeholder="ชื่อของคุณ" maxlength="15" autocomplete="off">
-  <button class="btn btn-primary" onclick="createRoom()">สร้างห้อง</button>
-
+  <button class="btn primary" onclick="createRoom()">สร้างห้อง</button>
   <div class="divider">หรือเข้าร่วม</div>
-
-  <input id="inp-code" type="text" placeholder="รหัสห้อง 4 ตัวอักษร" maxlength="4"
-    style="text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:22px;"
-    autocomplete="off">
+  <input id="inp-code" type="text" placeholder="รหัสห้อง 4 ตัว" maxlength="4"
+    style="text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:20px" autocomplete="off">
   <button class="btn" onclick="joinRoom()">เข้าร่วมห้อง</button>
-
-  <div id="home-err" class="error"></div>
-
+  <div id="home-err" class="err"></div>
   <div class="spacer"></div>
-  <button class="btn" style="border-color:#333;color:#555;font-size:14px;" onclick="location.href='/'">← กลับหน้าหลัก</button>
+  <button class="btn muted" onclick="location.href='/'">← กลับหน้าหลัก</button>
 </div>
 
-<!-- ══ 2. LOBBY ══ -->
+<!-- ══ LOBBY ══ -->
 <div id="s-lobby" class="screen">
   <div class="room-code-wrap">
-    <div class="room-code-label">รหัสห้อง — แชร์ให้เพื่อน</div>
+    <div class="sec-title">รหัสห้อง — แชร์ให้เพื่อน</div>
     <div class="room-code" id="lob-code" onclick="copyCode()">----</div>
     <div class="copy-hint">แตะเพื่อคัดลอก</div>
   </div>
+  <div class="sec-title">ผู้เล่ม <span id="lob-cnt">0</span> คน</div>
+  <div id="lob-players" style="display:flex;flex-direction:column;gap:8px"></div>
 
-  <div class="section-title">ผู้เล่ม (<span id="lob-cnt">0</span> คน)</div>
-  <div id="lob-players" class="player-list"></div>
-  <div id="lob-warn" class="error" style="display:none">ต้องการอย่างน้อย 4 คน</div>
+  <!-- Moderator toggle (host only) -->
+  <div id="mod-toggle-wrap" style="display:none">
+    <div class="toggle-row">
+      <span class="toggle-label">🎮 Host เป็น Moderator</span>
+      <label class="toggle"><input type="checkbox" id="mod-toggle" onchange="setModMode(this.checked)">
+        <span class="toggle-slider"></span></label>
+    </div>
+    <div style="color:#555;font-size:12px;padding:4px 2px">Moderator ดูบทบาทได้ทุกคน และควบคุมเวลาโหวต</div>
+  </div>
 
+  <div id="lob-warn" class="err" style="display:none">ต้องการผู้เล่นอย่างน้อย 4 คน</div>
   <div class="spacer"></div>
-  <button id="btn-start" class="btn btn-primary" style="display:none" onclick="startGame()">▶ เริ่มเกม</button>
-  <div id="lob-wait" class="info-row" style="display:none">รอโฮสต์เริ่มเกม...</div>
+  <button id="btn-start" class="btn primary" style="display:none" onclick="startGame()">▶ เริ่มเกม</button>
+  <div id="lob-wait" class="center" style="display:none;color:#444;font-size:14px">รอโฮสต์เริ่มเกม...</div>
 </div>
 
-<!-- ══ 3. ROLE REVEAL ══ -->
+<!-- ══ ROLE REVEAL ══ -->
 <div id="s-reveal" class="screen">
-  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px">
     <h2>บทบาทของคุณ</h2>
     <div class="role-card">
       <div id="rev-emoji" class="role-emoji">❓</div>
-      <div id="rev-name" class="role-name">—</div>
-      <div id="rev-desc" class="role-desc">—</div>
-      <div id="rev-team" class="role-team" style="display:none"></div>
+      <div id="rev-name"  class="role-name">—</div>
+      <div id="rev-desc"  class="role-desc">—</div>
+      <div id="rev-team"  class="role-team" style="display:none"></div>
     </div>
-    <div class="countdown-ring" id="rev-count">8</div>
-    <div class="countdown-label">วินาที ก่อนกลางคืนเริ่ม</div>
+    <div class="countdown" id="rev-count">8</div>
+    <div class="count-sub">วินาที ก่อนกลางคืนเริ่ม</div>
   </div>
 </div>
 
-<!-- ══ 4. NIGHT ══ -->
+<!-- ══ MODERATOR GAME VIEW ══ -->
+<div id="s-mod" class="screen">
+  <div class="banner mod">🎮 Moderator — วันที่ <span id="mod-day">1</span></div>
+  <div class="sec-title">บทบาทผู้เล่นทุกคน</div>
+  <div id="mod-players" style="display:flex;flex-direction:column;gap:7px"></div>
+  <div id="mod-phase-info" class="info-box yellow" style="display:none"></div>
+  <div class="spacer"></div>
+  <button id="mod-start-vote" class="btn green" style="display:none" onclick="modStartVote()">⚖️ เริ่มโหวต</button>
+  <button id="mod-night-info" class="btn muted" style="display:none" disabled>🌙 กลางคืน — รอบทบาทพิเศษ...</button>
+</div>
+
+<!-- ══ NIGHT ══ -->
 <div id="s-night" class="screen">
-  <div class="phase-banner phase-night">🌙 กลางคืน — วันที่ <span id="night-day">1</span></div>
+  <div class="banner night">🌙 กลางคืน — วันที่ <span id="night-day">1</span></div>
+
+  <!-- Night 1: intro only -->
+  <div id="n-first" style="display:none;flex-direction:column;gap:12px">
+    <div class="info-box yellow" style="text-align:center;padding:16px">
+      <div style="font-size:32px;margin-bottom:8px">🌕</div>
+      <div style="font-size:16px;font-weight:bold">คืนแรก — ไม่มีการฆ่า</div>
+      <div style="margin-top:6px;color:#999;font-size:13px">ทุกฝ่ายได้พบปะทีมของตนเอง<br>กำลังรุ่งเช้า...</div>
+    </div>
+    <div id="n-first-team" style="display:none"></div>
+  </div>
 
   <!-- Wolf -->
-  <div id="n-wolf" style="display:none;flex-direction:column;gap:12px;">
+  <div id="n-wolf" style="display:none;flex-direction:column;gap:11px">
     <h3>🩸 เลือกเหยื่อ</h3>
-    <div id="wolf-vote-box" class="wolf-info-box" style="display:none"></div>
-    <div id="wolf-targets" class="action-list"></div>
-    <div id="wolf-wait" class="info-row" style="display:none">รอสมาชิกในทีมโหวต...</div>
+    <div id="wolf-vote-box" class="info-box wolf" style="display:none"></div>
+    <div id="wolf-targets" class="act-list"></div>
+    <div id="wolf-wait" class="idle-msg" style="display:none;padding:12px 0;font-size:14px">รอสมาชิกในทีมโหวต...</div>
   </div>
 
   <!-- Seer -->
-  <div id="n-seer" style="display:none;flex-direction:column;gap:12px;">
+  <div id="n-seer" style="display:none;flex-direction:column;gap:11px">
     <h3>🔮 ตรวจสอบบทบาท</h3>
-    <div id="seer-targets" class="action-list"></div>
-    <div id="seer-result" class="seer-result-box" style="display:none"></div>
+    <div id="seer-targets" class="act-list"></div>
+    <div id="seer-result" class="info-box seer" style="display:none;text-align:center;padding:16px"></div>
   </div>
 
-  <!-- Doctor -->
-  <div id="n-doctor" style="display:none;flex-direction:column;gap:12px;">
-    <h3>💉 เลือกผู้ที่จะรักษา</h3>
-    <div id="doc-targets" class="action-list"></div>
-    <div id="doc-done" class="info-row" style="display:none">✅ บันทึกแล้ว รอรุ่งเช้า...</div>
+  <!-- Bodyguard -->
+  <div id="n-bg" style="display:none;flex-direction:column;gap:11px">
+    <h3>🛡 เลือกผู้ที่จะปกป้อง</h3>
+    <div id="bg-targets" class="act-list"></div>
+    <div id="bg-done" class="info-box green" style="display:none;text-align:center">✅ บันทึกแล้ว รอรุ่งเช้า...</div>
   </div>
 
-  <!-- Villager / spectator -->
-  <div id="n-idle" style="display:none;">
-    <div class="waiting-msg">
-      <div class="icon" id="n-idle-icon">😴</div>
-      <div id="n-idle-msg">คุณกำลังนอนหลับ รอรุ่งเช้า...</div>
+  <!-- Witch (shown after wolves decide) -->
+  <div id="n-witch" style="display:none;flex-direction:column;gap:11px">
+    <h3>🧙 พลังแม่มด</h3>
+    <div id="witch-wolf-target" class="info-box wolf" style="display:none"></div>
+    <div id="witch-save-btn" class="act-btn neutral" style="display:none" onclick="witchAct('save',null)">💊 ใช้ยาปกป้อง — ช่วยคนที่ถูกเลือก</div>
+    <div id="witch-kill-wrap" style="display:none;flex-direction:column;gap:8px">
+      <div style="color:#aaa;font-size:13px">☠️ ใช้ยาพิษ — เลือกเป้าหมาย</div>
+      <div id="witch-kill-list" class="act-list"></div>
+    </div>
+    <button id="witch-skip-btn" class="btn muted" onclick="witchAct('skip',null)">ข้ามคืนนี้</button>
+    <div id="witch-done" class="info-box green" style="display:none;text-align:center">✅ บันทึกแล้ว รอรุ่งเช้า...</div>
+  </div>
+
+  <!-- Idle (villager / minion / dead) -->
+  <div id="n-idle" style="display:none">
+    <div class="idle-msg">
+      <div class="idle-icon" id="n-idle-icon">😴</div>
+      <div id="n-idle-msg">กำลังนอนหลับ รอรุ่งเช้า...</div>
     </div>
   </div>
 </div>
 
-<!-- ══ 5. DAY ══ -->
+<!-- ══ DAY ══ -->
 <div id="s-day" class="screen">
-  <div class="phase-banner phase-day">☀️ รุ่งเช้า — วันที่ <span id="day-day">1</span></div>
+  <div class="banner day">☀️ รุ่งเช้า — วันที่ <span id="day-day">1</span></div>
 
-  <div id="day-ann" class="announcement"></div>
+  <!-- Night result announcements -->
+  <div id="day-anns" style="display:flex;flex-direction:column;gap:8px"></div>
 
-  <div class="section-title">โหวตเลือกผู้ต้องสงสัย</div>
-  <div class="vote-label">โหวตแล้ว <span id="v-count">0</span>/<span id="v-total">0</span> คน</div>
-  <div class="vote-bar-wrap"><div class="vote-bar" id="v-bar" style="width:0%"></div></div>
+  <!-- Hunter shooting overlay (while hunter is choosing) -->
+  <div id="hunter-shooting-notice" class="info-box orange" style="display:none;text-align:center">
+    <div style="font-size:28px;margin-bottom:6px">🏹</div>
+    <div id="hunter-shooting-name" style="font-weight:bold"></div>
+    <div style="color:#aaa;font-size:13px;margin-top:4px">กำลังเลือกเป้าหมาย...</div>
+  </div>
 
-  <div id="vote-list" class="action-list"></div>
+  <div class="sec-title">โหวตเลือกผู้ต้องสงสัย</div>
+  <div class="vbar-label">โหวตแล้ว <span id="v-count">0</span>/<span id="v-total">0</span> คน</div>
+  <div class="vbar-wrap"><div class="vbar" id="v-bar" style="width:0%"></div></div>
 
-  <div id="day-spectate" class="waiting-msg" style="display:none">
-    <div class="icon">👻</div>
-    <div>คุณตายแล้ว — กำลังสังเกตการณ์</div>
+  <div id="vote-list" class="act-list"></div>
+
+  <!-- Moderator: start vote button -->
+  <button id="day-mod-start" class="btn green" style="display:none" onclick="modStartVote()">⚖️ เริ่มโหวต</button>
+  <!-- Waiting for moderator msg (players) -->
+  <div id="day-mod-wait" class="center" style="display:none;color:#444;font-size:14px">รอ Moderator เปิดโหวต...</div>
+
+  <div id="day-spectate" class="idle-msg" style="display:none">
+    <div class="idle-icon">👻</div>
+    คุณตายแล้ว — กำลังสังเกตการณ์
   </div>
 </div>
 
-<!-- ══ 6. GAME OVER ══ -->
+<!-- ══ HUNTER SHOOT ══ -->
+<div id="s-hunter" class="screen">
+  <div class="banner" style="background:#150a00;border:2px solid #e67e22;color:#e67e22">🏹 คุณถูกกำจัด — ยิงใครสักคน!</div>
+  <div class="info-box orange" style="text-align:center;padding:14px">คุณเป็น <strong>นายพราน</strong> — เลือกยิงผู้เล่นหนึ่งคนก่อนตาย</div>
+  <div id="hunter-targets" class="act-list"></div>
+</div>
+
+<!-- ══ GAME OVER ══ -->
 <div id="s-gameover" class="screen">
-  <div id="go-banner" class="winner-banner">—</div>
-  <div id="go-my-result" style="text-align:center;font-size:18px;color:#aaa;"></div>
-
-  <div class="section-title">บทบาทของทุกคน</div>
-  <div id="go-players" class="player-list"></div>
-
+  <div id="go-banner" class="go-banner">—</div>
+  <div id="go-my" style="text-align:center;font-size:17px;color:#888;margin:-4px 0 4px"></div>
+  <div class="sec-title">บทบาทของทุกคน</div>
+  <div id="go-players" style="display:flex;flex-direction:column;gap:7px"></div>
   <div class="spacer"></div>
-  <button class="btn btn-primary" onclick="location.href='/werewolf.html'">เล่นอีกครั้ง</button>
-  <button class="btn" style="border-color:#333;color:#555;" onclick="location.href='/'">กลับหน้าหลัก</button>
+  <button class="btn primary" onclick="location.href='/werewolf.html'">เล่นอีกครั้ง</button>
+  <button class="btn muted"   onclick="location.href='/'">กลับหน้าหลัก</button>
 </div>
 
 <script>
-  // ── Server URL config ──────────────────────────────────────────────────────
-  // ถ้า frontend อยู่บน Vercel แต่ backend อยู่ที่อื่น
-  // ให้เพิ่ม ?server=https://your-backend.railway.app ใน URL
-  // หรือ set window.SOCKET_SERVER ก่อนเปิดหน้านี้
-  const _serverUrl = (() => {
+  const _srv = (() => {
     const p = new URLSearchParams(location.search).get('server');
     return p || window.SOCKET_SERVER || location.origin;
   })();
 </script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const socket = io(_serverUrl, { transports: ['websocket', 'polling'] });
+  const socket = io(_srv, { transports: ['websocket', 'polling'] });
 
-  let myId = null, myRole = null, myName = '', isHost = false, roomCode = '';
-  let allPlayers = [];    // { id, name, role?, alive }
-  let alivePlayers = [];  // { id, name } — from server
-  let wolfTeammateIds = [];
-  let hasActedNight = false, hasVoted = false;
-  let revealTimer = null;
+  let myId = null, myRole = null, myName = '', isHost = false, isMod = false;
+  let roomCode = '', modMode = false;
+  let allPlayers = [], alivePlayers = [];
+  let wolfTeammateIds = [], masonTeammateIds = [];
+  let hasActedNight = false, hasVoted = false, witchActed = false;
+  let revTimer = null;
 
   const ROLES = {
-    werewolf: { emoji: '🐺', name: 'มนุษย์หมาป่า', desc: 'ฆ่าชาวบ้านในตอนกลางคืน ชนะเมื่อจำนวนหมาป่า ≥ ชาวบ้านที่เหลือ', tagClass: 'tag-werewolf' },
-    villager: { emoji: '👨‍🌾', name: 'ชาวบ้าน',       desc: 'ไม่มีความสามารถพิเศษ ช่วยโหวตกำจัดมนุษย์หมาป่า',                    tagClass: 'tag-villager' },
-    seer:     { emoji: '🔮', name: 'หมอดู',         desc: 'ทุกคืนดูบทบาทของผู้เล่นหนึ่งคนได้',                                tagClass: 'tag-seer'     },
-    doctor:   { emoji: '💉', name: 'แพทย์',         desc: 'ทุกคืนปกป้องผู้เล่นหนึ่งคน (รวมตัวเอง) จากการถูกฆ่า',              tagClass: 'tag-doctor'   },
+    werewolf:  { e:'🐺', n:'มนุษย์หมาป่า', d:'ฆ่าชาวบ้านทุกคืน ชนะเมื่อ หมาป่า ≥ ชาวบ้านที่เหลือ' },
+    villager:  { e:'👨‍🌾', n:'ชาวบ้าน',      d:'ไม่มีความสามารถพิเศษ ช่วยโหวตกำจัดมนุษย์หมาป่า' },
+    seer:      { e:'🔮', n:'หมอดู',        d:'ทุกคืนดูบทบาทของผู้เล่นหนึ่งคนได้' },
+    bodyguard: { e:'🛡', n:'บอดี้การ์ด',   d:'ทุกคืนปกป้องผู้เล่นหนึ่งคนจากการถูกฆ่า (ห้ามซ้ำคนเดิม 2 คืนติดกัน)' },
+    hunter:    { e:'🏹', n:'นายพราน',      d:'ถ้าถูกกำจัดด้วยวิธีใดก็ตาม สามารถยิงผู้เล่นหนึ่งคนทันที' },
+    witch:     { e:'🧙', n:'แม่มด',        d:'มียาปกป้อง 1 ขวด + ยาพิษ 1 ขวด ใช้ได้คืนละ 1 ขวด ใช้แล้วหมดไป' },
+    mason:     { e:'🔨', n:'ภราดรเมสัน',   d:'รู้จักกันในคืนแรก ไม่มีความสามารถพิเศษอื่น' },
+    minion:    { e:'🐾', n:'สมุนรับใช้',   d:'รู้ว่าใครเป็นหมาป่า แต่ไม่มีความสามารถกลางคืน ชนะฝ่ายเดียวกับหมาป่า' },
+    tanner:    { e:'🪢', n:'ยาจก',        d:'ชนะทันทีถ้าถูกโหวตออกในช่วงกลางวัน' },
+    moderator: { e:'🎮', n:'Moderator',   d:'ดูบทบาทได้ทุกคน ควบคุมการโหวต' },
   };
+
+  function ri(role) { return ROLES[role] || ROLES.villager; }
+  function tag(role) { return `<span class="tag ${role}">${ri(role).e} ${ri(role).n}</span>`; }
 
   function show(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
   }
 
-  function roleTag(role) {
-    const r = ROLES[role] || ROLES.villager;
-    return `<span class="tag ${r.tagClass}">${r.emoji} ${r.name}</span>`;
-  }
-
-  // ── HOME ──────────────────────────────────
+  // ── HOME ─────────────────────────────────────────────────────────────────────
   function createRoom() {
     const name = document.getElementById('inp-name').value.trim();
     if (!name) return setErr('กรุณาใส่ชื่อ');
-    myName = name;
-    socket.emit('create-room', { name });
+    myName = name; socket.emit('create-room', { name });
   }
-
   function joinRoom() {
     const name = document.getElementById('inp-name').value.trim();
     const code = document.getElementById('inp-code').value.trim().toUpperCase();
     if (!name) return setErr('กรุณาใส่ชื่อ');
     if (code.length !== 4) return setErr('กรุณาใส่รหัสห้อง 4 ตัวอักษร');
-    myName = name;
-    socket.emit('join-room', { code, name });
+    myName = name; socket.emit('join-room', { code, name });
   }
+  function setErr(m) { document.getElementById('home-err').textContent = m; }
 
-  function setErr(msg) { document.getElementById('home-err').textContent = msg; }
-
-  // ── LOBBY ─────────────────────────────────
+  // ── LOBBY ────────────────────────────────────────────────────────────────────
   function copyCode() {
     navigator.clipboard?.writeText(roomCode).catch(() => {});
-    const el = document.getElementById('lob-code');
-    const prev = el.textContent;
-    el.textContent = 'คัดลอก!';
-    setTimeout(() => el.textContent = prev, 1400);
+    const el = document.getElementById('lob-code'), t = el.textContent;
+    el.textContent = '✓ คัดลอก';
+    setTimeout(() => el.textContent = t, 1500);
   }
+  function setModMode(en) { socket.emit('set-moderator-mode', { enabled: en }); }
+  function startGame()    { socket.emit('start-game'); }
 
-  function renderLobby(players) {
+  function renderLobby(players, mm) {
+    if (mm !== undefined) modMode = mm;
     document.getElementById('lob-code').textContent = roomCode;
     document.getElementById('lob-cnt').textContent = players.length;
 
-    document.getElementById('lob-players').innerHTML = players.map(p =>
-      `<div class="player-item">
+    const list = document.getElementById('lob-players');
+    list.innerHTML = players.map(p =>
+      `<div class="player-row">
         <span>${p.isHost ? '👑 ' : ''}${p.name}</span>
         ${p.id === myId ? '<span class="badge">คุณ</span>' : ''}
       </div>`
     ).join('');
 
-    const enough = players.length >= 4;
+    const playing = modMode ? players.filter(p => !p.isHost).length : players.length;
+    const enough = playing >= 4;
     document.getElementById('lob-warn').style.display = enough ? 'none' : 'block';
-
-    if (isHost) {
-      document.getElementById('btn-start').style.display = 'block';
-      document.getElementById('btn-start').disabled = !enough;
-      document.getElementById('lob-wait').style.display = 'none';
-    } else {
-      document.getElementById('btn-start').style.display = 'none';
-      document.getElementById('lob-wait').style.display = 'block';
-    }
+    document.getElementById('mod-toggle-wrap').style.display = isHost ? 'block' : 'none';
+    document.getElementById('btn-start').style.display = isHost ? 'block' : 'none';
+    document.getElementById('btn-start').disabled = !enough;
+    document.getElementById('lob-wait').style.display = isHost ? 'none' : 'block';
   }
 
-  function startGame() { socket.emit('start-game'); }
-
-  // ── ROLE REVEAL ───────────────────────────
+  // ── ROLE REVEAL ──────────────────────────────────────────────────────────────
   function showReveal(role, teammates) {
-    const r = ROLES[role] || ROLES.villager;
-    document.getElementById('rev-emoji').textContent = r.emoji;
-    document.getElementById('rev-name').textContent = r.name;
-    document.getElementById('rev-desc').textContent = r.desc;
+    const r = ri(role);
+    document.getElementById('rev-emoji').textContent = r.e;
+    document.getElementById('rev-name').textContent  = r.n;
+    document.getElementById('rev-desc').textContent  = r.d;
 
-    const teamEl = document.getElementById('rev-team');
-    if (role === 'werewolf' && teammates.length > 0) {
-      teamEl.style.display = 'block';
-      teamEl.textContent = '🐺 ทีม: ' + teammates.map(t => t.name).join(', ');
+    const el = document.getElementById('rev-team');
+    if (teammates.length > 0) {
+      el.style.display = 'block';
+      const cls = role === 'werewolf' ? 'wolf' : role === 'mason' ? 'mason' : 'minion';
+      el.className = `role-team ${cls}`;
+      const label = role === 'werewolf' ? '🐺 ทีม' : role === 'mason' ? '🔨 ภราดร' : '🐾 เจ้านาย';
+      el.textContent = `${label}: ${teammates.map(t => t.name).join(', ')}`;
     } else {
-      teamEl.style.display = 'none';
+      el.style.display = 'none';
     }
 
     let c = 8;
-    clearInterval(revealTimer);
+    clearInterval(revTimer);
     document.getElementById('rev-count').textContent = c;
-    revealTimer = setInterval(() => {
-      c--;
-      document.getElementById('rev-count').textContent = c;
-      if (c <= 0) clearInterval(revealTimer);
-    }, 1000);
-
+    revTimer = setInterval(() => { c--; document.getElementById('rev-count').textContent = c; if (c <= 0) clearInterval(revTimer); }, 1000);
     show('s-reveal');
   }
 
-  // ── NIGHT ─────────────────────────────────
-  function showNight(day, players) {
-    document.getElementById('night-day').textContent = day;
+  // ── NIGHT ────────────────────────────────────────────────────────────────────
+  function showNight(day, isFirstNight, players) {
     alivePlayers = players;
-    hasActedNight = false;
+    hasActedNight = false; witchActed = false;
+    document.getElementById('night-day').textContent = day;
 
-    ['n-wolf','n-seer','n-doctor','n-idle'].forEach(id => {
+    ['n-first','n-wolf','n-seer','n-bg','n-witch','n-idle'].forEach(id => {
       document.getElementById(id).style.display = 'none';
     });
 
     const me = allPlayers.find(p => p.id === myId);
     const alive = !me || me.alive !== false;
 
-    if (!alive) {
+    if (isFirstNight) {
+      showNightFirst();
+    } else if (!alive) {
       showIdle('👻', 'คุณตายแล้ว — กำลังสังเกตการณ์');
     } else if (myRole === 'werewolf') {
       showWolfPanel();
     } else if (myRole === 'seer') {
       showSeerPanel();
-    } else if (myRole === 'doctor') {
-      showDoctorPanel();
+    } else if (myRole === 'bodyguard') {
+      showBgPanel();
+    } else if (myRole === 'witch') {
+      showWitchWaiting();
     } else {
-      showIdle('😴', 'คุณกำลังนอนหลับ รอรุ่งเช้า...');
+      showIdle('😴', 'กำลังนอนหลับ รอรุ่งเช้า...');
     }
 
     show('s-night');
   }
 
+  function showNightFirst() {
+    document.getElementById('n-first').style.display = 'flex';
+    const teamEl = document.getElementById('n-first-team');
+    const allTeams = [...wolfTeammateIds, ...masonTeammateIds];
+    if (allTeams.length > 0) {
+      teamEl.style.display = 'block';
+      const names = allTeams.map(id => allPlayers.find(p => p.id === id)?.name).filter(Boolean);
+      const label = wolfTeammateIds.length > 0 ? '🐺 ทีมของคุณ' : '🔨 ภราดรของคุณ';
+      const cls   = wolfTeammateIds.length > 0 ? 'wolf' : 'mason';
+      teamEl.innerHTML = `<div class="info-box ${cls}">${label}: <strong>${names.join(', ')}</strong></div>`;
+    } else {
+      teamEl.style.display = 'none';
+    }
+  }
+
   function showIdle(icon, msg) {
     document.getElementById('n-idle').style.display = 'flex';
     document.getElementById('n-idle-icon').textContent = icon;
-    document.getElementById('n-idle-msg').textContent = msg;
+    document.getElementById('n-idle-msg').textContent  = msg;
   }
 
   function showWolfPanel() {
-    const panel = document.getElementById('n-wolf');
-    panel.style.display = 'flex';
+    document.getElementById('n-wolf').style.display = 'flex';
     document.getElementById('wolf-vote-box').style.display = 'none';
     document.getElementById('wolf-wait').style.display = 'none';
-
     const targets = alivePlayers.filter(p => p.id !== myId && !wolfTeammateIds.includes(p.id));
     document.getElementById('wolf-targets').innerHTML = targets.map(p =>
-      `<button class="action-btn" id="wt-${p.id}" onclick="nightAct('${p.id}')">🩸 ${p.name}</button>`
-    ).join('');
+      `<button class="act-btn" id="wt-${p.id}" onclick="nightAct('${p.id}')">🩸 ${p.name}</button>`).join('');
   }
 
   function showSeerPanel() {
     document.getElementById('n-seer').style.display = 'flex';
     document.getElementById('seer-result').style.display = 'none';
-
     const targets = alivePlayers.filter(p => p.id !== myId);
     document.getElementById('seer-targets').innerHTML = targets.map(p =>
-      `<button class="action-btn" id="st-${p.id}" onclick="nightAct('${p.id}')">🔍 ${p.name}</button>`
-    ).join('');
+      `<button class="act-btn" id="st-${p.id}" onclick="nightAct('${p.id}')">🔍 ${p.name}</button>`).join('');
   }
 
-  function showDoctorPanel() {
-    document.getElementById('n-doctor').style.display = 'flex';
-    document.getElementById('doc-done').style.display = 'none';
+  function showBgPanel() {
+    document.getElementById('n-bg').style.display = 'flex';
+    document.getElementById('bg-done').style.display = 'none';
+    document.getElementById('bg-targets').innerHTML = alivePlayers.map(p =>
+      `<button class="act-btn" id="bt-${p.id}" onclick="nightAct('${p.id}')">🛡 ${p.name}${p.id === myId ? ' (ตัวเอง)' : ''}</button>`).join('');
+  }
 
-    document.getElementById('doc-targets').innerHTML = alivePlayers.map(p =>
-      `<button class="action-btn" id="dt-${p.id}" onclick="nightAct('${p.id}')">💊 ${p.name}${p.id === myId ? ' (ตัวเอง)' : ''}</button>`
-    ).join('');
+  function showWitchWaiting() {
+    document.getElementById('n-idle').style.display = 'flex';
+    document.getElementById('n-idle-icon').textContent = '🧙';
+    document.getElementById('n-idle-msg').textContent  = 'รอดูว่าหมาป่าเลือกใคร...';
+  }
+
+  function showWitchPanel(wolfTarget, hasSave, hasKill) {
+    document.getElementById('n-idle').style.display = 'none';
+    document.getElementById('n-witch').style.display = 'flex';
+    document.getElementById('witch-done').style.display = 'none';
+
+    const wBox = document.getElementById('witch-wolf-target');
+    if (wolfTarget) {
+      wBox.style.display = 'block';
+      wBox.textContent = `🐺 หมาป่าเลือก: ${wolfTarget.name}`;
+    } else { wBox.style.display = 'none'; }
+
+    const saveBtn = document.getElementById('witch-save-btn');
+    if (hasSave && wolfTarget) { saveBtn.style.display = 'block'; }
+    else { saveBtn.style.display = 'none'; }
+
+    const killWrap = document.getElementById('witch-kill-wrap');
+    if (hasKill) {
+      killWrap.style.display = 'flex';
+      document.getElementById('witch-kill-list').innerHTML = alivePlayers
+        .filter(p => p.id !== myId && (!wolfTarget || p.id !== wolfTarget.id))
+        .map(p => `<button class="act-btn" onclick="witchAct('kill','${p.id}')">☠️ ${p.name}</button>`).join('');
+    } else { killWrap.style.display = 'none'; }
   }
 
   function nightAct(targetId) {
@@ -565,194 +532,327 @@
     socket.emit('night-action', { targetId });
 
     if (myRole === 'werewolf') {
-      document.querySelectorAll('#wolf-targets .action-btn').forEach(b => b.disabled = true);
-      document.getElementById(`wt-${targetId}`)?.classList.add('selected');
+      document.querySelectorAll('#wolf-targets .act-btn').forEach(b => b.disabled = true);
+      document.getElementById(`wt-${targetId}`)?.classList.add('picked');
       document.getElementById('wolf-wait').style.display = 'block';
     } else if (myRole === 'seer') {
-      document.querySelectorAll('#seer-targets .action-btn').forEach(b => b.disabled = true);
-    } else if (myRole === 'doctor') {
-      document.querySelectorAll('#doc-targets .action-btn').forEach(b => b.disabled = true);
-      document.getElementById(`dt-${targetId}`)?.classList.add('selected');
-      document.getElementById('doc-done').style.display = 'block';
+      document.querySelectorAll('#seer-targets .act-btn').forEach(b => b.disabled = true);
+      document.getElementById(`st-${targetId}`)?.classList.add('picked');
+    } else if (myRole === 'bodyguard') {
+      document.querySelectorAll('#bg-targets .act-btn').forEach(b => b.disabled = true);
+      document.getElementById(`bt-${targetId}`)?.classList.add('picked');
+      document.getElementById('bg-done').style.display = 'block';
     }
   }
 
-  // ── DAY ───────────────────────────────────
-  function showDay(day, eliminated, players) {
-    document.getElementById('day-day').textContent = day;
+  function witchAct(action, targetId) {
+    if (witchActed) return;
+    witchActed = true;
+    socket.emit('witch-action', { action, targetId });
+    document.getElementById('witch-save-btn').style.display  = 'none';
+    document.getElementById('witch-kill-wrap').style.display = 'none';
+    document.getElementById('witch-skip-btn').style.display  = 'none';
+    document.getElementById('witch-done').style.display = 'block';
+  }
+
+  // ── DAY ──────────────────────────────────────────────────────────────────────
+  function showDay(day, eliminated, players, moderatorMode) {
     alivePlayers = players;
     hasVoted = false;
+    document.getElementById('day-day').textContent = day;
 
-    const ann = document.getElementById('day-ann');
-    if (eliminated) {
-      ann.className = 'announcement death';
-      ann.innerHTML = `<div style="font-size:38px;">💀</div>
-        <div style="font-size:20px;margin-top:8px;font-weight:bold;">${eliminated.name}</div>
-        <div style="color:#aaa;margin-top:6px;">บทบาท: ${roleTag(eliminated.role)}</div>`;
+    // Announcements
+    const anns = document.getElementById('day-anns');
+    if (eliminated.length === 0) {
+      anns.innerHTML = `<div class="ann safe"><div class="ann-icon">🌅</div><div class="ann-title">ไม่มีใครตายคืนนี้!</div></div>`;
     } else {
-      ann.className = 'announcement safe';
-      ann.innerHTML = `<div style="font-size:38px;">🌅</div>
-        <div style="font-size:18px;margin-top:8px;">ไม่มีใครตายคืนนี้!</div>`;
+      anns.innerHTML = eliminated.map(p =>
+        `<div class="ann death">
+          <div class="ann-icon">💀</div>
+          <div class="ann-title">${p.name}</div>
+          <div class="ann-sub">บทบาท: ${tag(p.role)}</div>
+        </div>`
+      ).join('');
     }
+
+    document.getElementById('hunter-shooting-notice').style.display = 'none';
+    setVoteBar(0, players.length);
 
     const me = allPlayers.find(p => p.id === myId);
     const alive = !me || me.alive !== false;
+    document.getElementById('day-spectate').style.display = (!alive && !isMod) ? 'flex' : 'none';
 
-    document.getElementById('day-spectate').style.display = alive ? 'none' : 'flex';
-
-    setVoteProgress(0, players.length);
-
-    if (alive) {
-      document.getElementById('vote-list').innerHTML = players
-        .filter(p => p.id !== myId)
-        .map(p => `<button class="action-btn" id="vb-${p.id}" onclick="castVote('${p.id}')">🗳 ${p.name}</button>`)
-        .join('');
-    } else {
+    if (isMod) {
+      // Moderator sees vote list as read-only
+      document.getElementById('day-mod-start').style.display = 'block';
+      document.getElementById('day-mod-wait').style.display  = 'none';
+      renderVoteList(players, false);
+    } else if (moderatorMode) {
+      document.getElementById('day-mod-start').style.display = 'none';
+      document.getElementById('day-mod-wait').style.display  = alive ? 'block' : 'none';
       document.getElementById('vote-list').innerHTML = '';
+    } else {
+      document.getElementById('day-mod-start').style.display = 'none';
+      document.getElementById('day-mod-wait').style.display  = 'none';
+      if (alive) renderVoteList(players, true);
     }
 
     show('s-day');
+  }
+
+  function renderVoteList(players, clickable) {
+    document.getElementById('vote-list').innerHTML = players
+      .filter(p => p.id !== myId)
+      .map(p =>
+        `<button class="act-btn" id="vb-${p.id}" ${clickable ? `onclick="castVote('${p.id}')"` : 'disabled'}>
+          🗳 ${p.name}
+        </button>`
+      ).join('');
   }
 
   function castVote(targetId) {
     if (hasVoted) return;
     hasVoted = true;
     socket.emit('vote', { targetId });
-    document.querySelectorAll('#vote-list .action-btn').forEach(b => b.disabled = true);
+    document.querySelectorAll('#vote-list .act-btn').forEach(b => b.disabled = true);
     document.getElementById(`vb-${targetId}`)?.classList.add('voted');
   }
 
-  function setVoteProgress(count, total) {
+  function modStartVote() {
+    socket.emit('start-vote');
+    document.getElementById('day-mod-start').style.display = 'none';
+    document.getElementById('mod-start-vote').style.display = 'none';
+    document.getElementById('day-mod-wait').style.display = 'none';
+  }
+
+  function setVoteBar(count, total) {
     document.getElementById('v-count').textContent = count;
     document.getElementById('v-total').textContent = total;
     document.getElementById('v-bar').style.width = total ? `${(count / total) * 100}%` : '0%';
   }
 
-  // ── GAME OVER ─────────────────────────────
+  // ── MODERATOR VIEW ───────────────────────────────────────────────────────────
+  function renderModView(day, phase) {
+    document.getElementById('mod-day').textContent = day || '—';
+
+    const list = document.getElementById('mod-players');
+    list.innerHTML = allPlayers
+      .filter(p => p.role && p.role !== 'moderator')
+      .map(p =>
+        `<div class="mod-player-row ${p.alive === false ? 'dead' : ''}">
+          <span>${p.alive === false ? '💀 ' : ''}${p.name}</span>
+          ${tag(p.role || 'villager')}
+        </div>`
+      ).join('');
+
+    const modStart = document.getElementById('mod-start-vote');
+    modStart.style.display = phase === 'day' ? 'block' : 'none';
+    document.getElementById('mod-night-info').style.display = phase === 'night' ? 'block' : 'none';
+  }
+
+  // ── GAME OVER ────────────────────────────────────────────────────────────────
   function showGameOver(winner, players) {
     const banner = document.getElementById('go-banner');
     if (winner === 'werewolf') {
-      banner.className = 'winner-banner winner-wolf';
+      banner.className = 'go-banner wolf';
       banner.innerHTML = '🐺 มนุษย์หมาป่า ชนะ!';
+    } else if (winner === 'tanner') {
+      banner.className = 'go-banner tanner';
+      banner.innerHTML = '🪢 ยาจก ชนะ!';
     } else {
-      banner.className = 'winner-banner winner-village';
+      banner.className = 'go-banner village';
       banner.innerHTML = '🌾 ชาวบ้าน ชนะ!';
     }
 
     const me = players.find(p => p.id === myId);
-    const myTeam = me?.role === 'werewolf' ? 'werewolf' : 'villager';
-    document.getElementById('go-my-result').textContent =
-      myTeam === winner ? '🏆 คุณชนะ!' : '😔 คุณแพ้';
+    let myResult = '';
+    if (me) {
+      const myTeam = me.role === 'werewolf' || me.role === 'minion' ? 'werewolf' : me.role === 'tanner' ? 'tanner' : 'villager';
+      myResult = myTeam === winner ? '🏆 คุณชนะ!' : '😔 คุณแพ้';
+    }
+    document.getElementById('go-my').textContent = myResult;
 
     document.getElementById('go-players').innerHTML = players.map(p =>
-      `<div class="result-row ${p.alive ? '' : 'dead'}">
+      `<div class="go-result ${p.alive ? '' : 'dead'}">
         <span>${p.alive ? '' : '💀 '}${p.name}${p.id === myId ? ' (คุณ)' : ''}</span>
-        ${roleTag(p.role)}
+        ${tag(p.role)}
       </div>`
     ).join('');
 
     show('s-gameover');
   }
 
-  // ── SOCKET EVENTS ─────────────────────────
+  // ── SOCKET EVENTS ────────────────────────────────────────────────────────────
+
   socket.on('room-created', ({ code, players, playerId }) => {
     myId = playerId; roomCode = code; isHost = true;
     allPlayers = players.map(p => ({ ...p, alive: true }));
-    renderLobby(players);
+    renderLobby(players, false);
     show('s-lobby');
   });
 
   socket.on('joined-room', ({ code, players, playerId }) => {
     myId = playerId; roomCode = code; isHost = false;
     allPlayers = players.map(p => ({ ...p, alive: true }));
-    renderLobby(players);
+    renderLobby(players, false);
     show('s-lobby');
   });
 
-  socket.on('lobby-update', ({ players }) => {
+  socket.on('lobby-update', ({ players, moderatorMode: mm }) => {
     allPlayers = players.map(p => ({ ...p, alive: true }));
-    renderLobby(players);
+    renderLobby(players, mm);
   });
 
-  socket.on('join-error', msg => setErr(msg));
+  socket.on('join-error', m => setErr(m));
 
-  socket.on('game-started', ({ role, teammates, players }) => {
-    myRole = role;
-    wolfTeammateIds = teammates.map(t => t.id);
-    allPlayers = players.map(p => ({ id: p.id, name: p.name, alive: true }));
-    // add own role
+  socket.on('game-started', ({ role, teammates, isModerator, allPlayers: ap }) => {
+    myRole = role; isMod = isModerator;
+    wolfTeammateIds  = (role === 'werewolf' ? teammates : []).map(t => t.id);
+    masonTeammateIds = (role === 'mason'    ? teammates : []).map(t => t.id);
+
+    if (ap) {
+      allPlayers = ap.map(p => ({ ...p, alive: p.role !== 'moderator' }));
+    } else {
+      allPlayers.forEach(p => { p.alive = true; });
+    }
     const me = allPlayers.find(p => p.id === myId);
     if (me) me.role = role;
-    // add wolf teammates roles
-    if (role === 'werewolf') {
-      teammates.forEach(t => {
-        const tp = allPlayers.find(p => p.id === t.id);
-        if (tp) tp.role = 'werewolf';
-      });
+
+    if (isMod) {
+      renderModView(1, 'night');
+      show('s-mod');
+    } else {
+      showReveal(role, teammates);
     }
-    showReveal(role, teammates);
   });
 
-  socket.on('night-start', ({ day, players }) => {
-    showNight(day, players);
+  socket.on('night-start', ({ day, isFirstNight, players }) => {
+    alivePlayers = players;
+    allPlayers.forEach(p => { p.alive = players.some(ap => ap.id === p.id) || p.role === 'moderator'; });
+
+    if (isMod) {
+      renderModView(day, 'night');
+    } else {
+      showNight(day, isFirstNight, players);
+    }
   });
 
   socket.on('wolf-vote-update', ({ voterName, targetName }) => {
-    const box = document.getElementById('wolf-vote-box');
-    box.style.display = 'block';
-    box.textContent = `🐺 ${voterName} เลือก ${targetName}`;
+    const b = document.getElementById('wolf-vote-box');
+    b.style.display = 'block';
+    b.textContent = `🐺 ${voterName} เลือก ${targetName}`;
   });
 
   socket.on('seer-result', ({ targetName, isWerewolf }) => {
     const el = document.getElementById('seer-result');
     el.style.display = 'block';
     el.innerHTML = isWerewolf
-      ? `<div style="font-size:40px;">🐺</div><div style="margin-top:10px;color:#e74c3c;font-size:17px;"><strong>${targetName}</strong><br>เป็นมนุษย์หมาป่า!</div>`
-      : `<div style="font-size:40px;">👨‍🌾</div><div style="margin-top:10px;color:#27ae60;font-size:17px;"><strong>${targetName}</strong><br>ไม่ใช่มนุษย์หมาป่า</div>`;
+      ? `<div style="font-size:36px">🐺</div><div style="color:#e74c3c;margin-top:8px;font-size:16px"><strong>${targetName}</strong> เป็นมนุษย์หมาป่า!</div>`
+      : `<div style="font-size:36px">👨‍🌾</div><div style="color:#27ae60;margin-top:8px;font-size:16px"><strong>${targetName}</strong> ไม่ใช่มนุษย์หมาป่า</div>`;
   });
 
-  socket.on('day-start', ({ day, eliminated, players }) => {
-    if (eliminated) {
-      const p = allPlayers.find(p => p.id === eliminated.id);
-      if (p) { p.alive = false; p.role = eliminated.role; }
-    }
+  socket.on('witch-notify', ({ wolfTarget, hasSavePotion, hasKillPotion }) => {
+    showWitchPanel(wolfTarget, hasSavePotion, hasKillPotion);
+  });
+
+  socket.on('day-start', ({ day, eliminated, players, moderatorMode: mm }) => {
+    eliminated.forEach(p => {
+      const ap = allPlayers.find(a => a.id === p.id);
+      if (ap) { ap.alive = false; ap.role = p.role; }
+    });
     alivePlayers = players;
-    showDay(day, eliminated, players);
+
+    if (isMod) {
+      renderModView(day, 'day');
+      // Show day in mod screen
+      const phaseInfo = document.getElementById('mod-phase-info');
+      if (eliminated.length > 0) {
+        phaseInfo.style.display = 'block';
+        phaseInfo.innerHTML = '💀 ตายกลางคืน: ' + eliminated.map(p => `${p.name} (${ri(p.role).n})`).join(', ');
+      } else {
+        phaseInfo.style.display = 'block';
+        phaseInfo.textContent = '🌅 ไม่มีใครตายคืนนี้';
+      }
+    } else {
+      showDay(day, eliminated, players, mm ?? modMode);
+    }
+  });
+
+  socket.on('vote-started', () => {
+    if (isMod) { renderModView(null, 'voting'); return; }
+    document.getElementById('day-mod-wait').style.display = 'none';
+    document.getElementById('day-mod-start').style.display = 'none';
+    // Enable vote buttons for alive players
+    const me = allPlayers.find(p => p.id === myId);
+    if (me?.alive) renderVoteList(alivePlayers, true);
   });
 
   socket.on('vote-update', ({ votes, voteCount, aliveCount }) => {
-    setVoteProgress(voteCount, aliveCount);
-
-    // show vote counts on buttons
+    setVoteBar(voteCount, aliveCount);
     const tally = {};
     Object.values(votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
     alivePlayers.forEach(p => {
-      const btn = document.getElementById(`vb-${p.id}`);
-      if (!btn) return;
+      const b = document.getElementById(`vb-${p.id}`);
+      if (!b) return;
       const cnt = tally[p.id] || 0;
-      btn.textContent = `🗳 ${p.name}${cnt ? ` (${cnt})` : ''}`;
+      b.textContent = `🗳 ${p.name}${cnt ? ` (${cnt})` : ''}`;
     });
   });
 
-  socket.on('vote-result', ({ eliminated, tied }) => {
-    const ann = document.getElementById('day-ann');
+  socket.on('vote-result', ({ eliminated, tied, tannerWin }) => {
+    const ann = document.getElementById('day-anns');
     if (tied) {
-      ann.className = 'announcement';
-      ann.innerHTML = `<div style="font-size:36px;">⚖️</div>
-        <div style="font-size:17px;margin-top:8px;">โหวตเสมอกัน — ไม่มีใครถูกเนรเทศ</div>`;
+      ann.innerHTML += `<div class="ann"><div class="ann-icon">⚖️</div><div class="ann-title">โหวตเสมอ — ไม่มีใครถูกเนรเทศ</div></div>`;
+    } else if (tannerWin) {
+      ann.innerHTML += `<div class="ann vote"><div class="ann-icon">🪢</div><div class="ann-title">${eliminated.name} ถูกโหวตออก</div><div class="ann-sub">ยาจกชนะทันที!</div></div>`;
     } else if (eliminated) {
-      ann.className = 'announcement vote-out';
-      const p = allPlayers.find(p => p.id === eliminated.id);
-      if (p) { p.alive = false; p.role = eliminated.role; }
-      ann.innerHTML = `<div style="font-size:36px;">⚖️</div>
-        <div style="font-size:19px;margin-top:8px;">ชาวบ้านโหวต <strong>${eliminated.name}</strong> ออก</div>
-        <div style="color:#aaa;margin-top:6px;">บทบาท: ${roleTag(eliminated.role)}</div>`;
+      const ap = allPlayers.find(p => p.id === eliminated.id);
+      if (ap) { ap.alive = false; ap.role = eliminated.role; }
+      ann.innerHTML += `<div class="ann vote"><div class="ann-icon">⚖️</div><div class="ann-title">${eliminated.name} ถูกโหวตออก</div><div class="ann-sub">บทบาท: ${tag(eliminated.role)}</div></div>`;
     }
-    document.querySelectorAll('#vote-list .action-btn').forEach(b => b.disabled = true);
+    document.querySelectorAll('#vote-list .act-btn').forEach(b => b.disabled = true);
+
+    if (isMod) renderModView(null, 'resolved');
+  });
+
+  socket.on('hunter-shooting', ({ names }) => {
+    const notice = document.getElementById('hunter-shooting-notice');
+    notice.style.display = 'block';
+    document.getElementById('hunter-shooting-name').textContent = `${names.join(', ')} กำลังเล็งปืน...`;
+  });
+
+  socket.on('hunter-shoot', ({ players }) => {
+    // This player is the hunter
+    document.getElementById('hunter-targets').innerHTML = players.map(p =>
+      `<button class="act-btn" onclick="hunterShoot('${p.id}')">🎯 ${p.name}</button>`
+    ).join('');
+    show('s-hunter');
+  });
+
+  function hunterShoot(targetId) {
+    socket.emit('hunter-shot', { targetId });
+    document.querySelectorAll('#hunter-targets .act-btn').forEach(b => b.disabled = true);
+  }
+
+  socket.on('hunter-shot-result', ({ hunterName, shotPlayer }) => {
+    const notice = document.getElementById('hunter-shooting-notice');
+    notice.style.display = 'none';
+    const ann = document.getElementById('day-anns');
+    if (shotPlayer) {
+      const ap = allPlayers.find(p => p.name === shotPlayer.name);
+      if (ap) { ap.alive = false; ap.role = shotPlayer.role; }
+      const msg = `<div class="ann vote"><div class="ann-icon">🏹</div><div class="ann-title">${hunterName} ยิง ${shotPlayer.name}</div><div class="ann-sub">บทบาท: ${tag(shotPlayer.role)}</div></div>`;
+      if (document.getElementById('s-day').classList.contains('active')) {
+        ann.innerHTML += msg;
+      } else {
+        // Might be on hunter screen — switch to day to show result
+        show('s-day');
+        ann.innerHTML += msg;
+      }
+    }
   });
 
   socket.on('game-over', ({ winner, players }) => {
-    // update allPlayers with full role info
     players.forEach(sp => {
       const p = allPlayers.find(p => p.id === sp.id);
       if (p) { p.role = sp.role; p.alive = sp.alive; }
