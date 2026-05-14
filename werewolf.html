@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>🐺 Werewolf</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #0d0d0d;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+
+    .screen {
+      display: none;
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      flex-direction: column;
+      padding: 24px 20px env(safe-area-inset-bottom, 20px);
+      gap: 14px;
+    }
+    .screen.active { display: flex; }
+
+    h2 { font-size: 26px; text-align: center; }
+    h3 { font-size: 19px; color: #ccc; }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 18px;
+      border: 2px solid #333;
+      border-radius: 12px;
+      background: #1a1a1a;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: #666; }
+
+    .btn {
+      width: 100%;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      border: 2px solid #fff;
+      border-radius: 14px;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn:active { background: #fff; color: #000; }
+    .btn-primary { background: #fff; color: #000; border-color: #fff; }
+    .btn-primary:active { background: #ccc; }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .divider {
+      text-align: center;
+      color: #444;
+      font-size: 14px;
+      position: relative;
+      line-height: 1;
+    }
+    .divider::before, .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 42%;
+      height: 1px;
+      background: #2a2a2a;
+    }
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+
+    .error { color: #e74c3c; text-align: center; font-size: 15px; min-height: 18px; }
+
+    /* Lobby */
+    .room-code-wrap { text-align: center; }
+    .room-code-label { color: #666; font-size: 13px; margin-bottom: 6px; }
+    .room-code {
+      display: inline-block;
+      font-size: 44px;
+      font-weight: bold;
+      letter-spacing: 10px;
+      color: #f1c40f;
+      border: 3px solid #f1c40f;
+      border-radius: 14px;
+      padding: 10px 20px;
+      cursor: pointer;
+      user-select: all;
+    }
+    .copy-hint { color: #555; font-size: 12px; margin-top: 4px; }
+
+    .section-title { color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .player-list { display: flex; flex-direction: column; gap: 8px; }
+    .player-item {
+      padding: 12px 16px;
+      background: #1a1a1a;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 16px;
+    }
+    .badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: #2a2a2a;
+      color: #888;
+    }
+
+    /* Role reveal */
+    .role-card {
+      text-align: center;
+      padding: 28px 20px;
+      border: 2px solid #333;
+      border-radius: 20px;
+      background: #141414;
+    }
+    .role-emoji { font-size: 76px; }
+    .role-name { font-size: 30px; font-weight: bold; margin: 10px 0 8px; }
+    .role-desc { color: #999; font-size: 15px; line-height: 1.6; }
+    .role-team { margin-top: 12px; color: #e74c3c; font-size: 15px; font-weight: bold; }
+
+    .countdown-ring {
+      text-align: center;
+      font-size: 60px;
+      font-weight: bold;
+      color: #f1c40f;
+      line-height: 1;
+    }
+    .countdown-label { text-align: center; color: #555; font-size: 14px; margin-top: 4px; }
+
+    /* Phase banner */
+    .phase-banner {
+      text-align: center;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .phase-night { background: #0a0a1e; border: 2px solid #3a3aff; color: #9b9bff; }
+    .phase-day   { background: #1e1200; border: 2px solid #f39c12; color: #f39c12; }
+
+    /* Action buttons (night targets / vote targets) */
+    .action-list { display: flex; flex-direction: column; gap: 10px; }
+    .action-btn {
+      padding: 14px 16px;
+      background: #1a1a1a;
+      border: 2px solid #333;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .action-btn:active:not(:disabled) { border-color: #888; background: #222; }
+    .action-btn.selected { border-color: #f1c40f; background: #1e1800; }
+    .action-btn.voted    { border-color: #27ae60; background: #0a1e10; }
+    .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* Wolf team info */
+    .wolf-info-box {
+      background: #1a0000;
+      border: 2px solid #8b0000;
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: #ff6b6b;
+      font-size: 14px;
+    }
+
+    /* Seer result */
+    .seer-result-box {
+      background: #120020;
+      border: 2px solid #8e44ad;
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    /* Announcement */
+    .announcement {
+      text-align: center;
+      padding: 20px 16px;
+      border-radius: 14px;
+      background: #141414;
+      border: 2px solid #333;
+    }
+    .announcement.death { border-color: #e74c3c; background: #1a0000; }
+    .announcement.safe  { border-color: #27ae60; background: #001a09; }
+    .announcement.vote-out { border-color: #e67e22; background: #1a0d00; }
+
+    /* Vote progress */
+    .vote-bar-wrap { background: #1a1a1a; border-radius: 8px; overflow: hidden; height: 6px; }
+    .vote-bar { height: 100%; background: #27ae60; transition: width 0.3s; border-radius: 8px; }
+    .vote-label { text-align: center; color: #666; font-size: 14px; }
+
+    /* Game over */
+    .winner-banner {
+      text-align: center;
+      padding: 24px;
+      border-radius: 18px;
+      font-size: 26px;
+      font-weight: bold;
+    }
+    .winner-wolf    { background: #1a0000; border: 3px solid #e74c3c; }
+    .winner-village { background: #001a09; border: 3px solid #27ae60; }
+
+    .result-row {
+      padding: 12px 16px;
+      background: #141414;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 15px;
+    }
+    .result-row.dead { opacity: 0.45; }
+
+    .tag {
+      font-size: 13px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .tag-werewolf { background: #4a0000; color: #ff6b6b; }
+    .tag-seer     { background: #1e0044; color: #c39bd3; }
+    .tag-doctor   { background: #002212; color: #82e0aa; }
+    .tag-villager { background: #222;    color: #aaa; }
+
+    .spacer { flex: 1; }
+
+    .waiting-msg {
+      text-align: center;
+      color: #555;
+      font-size: 16px;
+      padding: 20px 0;
+    }
+    .waiting-msg .icon { font-size: 48px; margin-bottom: 12px; }
+
+    .info-row { text-align: center; color: #555; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- ══ 1. HOME ══ -->
+<div id="s-home" class="screen active">
+  <div style="padding-top: 40px; text-align: center;">
+    <div style="font-size: 72px;">🐺</div>
+    <div style="font-size: 32px; font-weight: bold; margin-top: 8px;">Werewolf</div>
+    <div style="color: #555; font-size: 14px; margin-top: 4px;">4–12 ผู้เล่น</div>
+  </div>
+
+  <input id="inp-name" type="text" placeholder="ชื่อของคุณ" maxlength="15" autocomplete="off">
+  <button class="btn btn-primary" onclick="createRoom()">สร้างห้อง</button>
+
+  <div class="divider">หรือเข้าร่วม</div>
+
+  <input id="inp-code" type="text" placeholder="รหัสห้อง 4 ตัวอักษร" maxlength="4"
+    style="text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:22px;"
+    autocomplete="off">
+  <button class="btn" onclick="joinRoom()">เข้าร่วมห้อง</button>
+
+  <div id="home-err" class="error"></div>
+
+  <div class="spacer"></div>
+  <button class="btn" style="border-color:#333;color:#555;font-size:14px;" onclick="location.href='/'">← กลับหน้าหลัก</button>
+</div>
+
+<!-- ══ 2. LOBBY ══ -->
+<div id="s-lobby" class="screen">
+  <div class="room-code-wrap">
+    <div class="room-code-label">รหัสห้อง — แชร์ให้เพื่อน</div>
+    <div class="room-code" id="lob-code" onclick="copyCode()">----</div>
+    <div class="copy-hint">แตะเพื่อคัดลอก</div>
+  </div>
+
+  <div class="section-title">ผู้เล่ม (<span id="lob-cnt">0</span> คน)</div>
+  <div id="lob-players" class="player-list"></div>
+  <div id="lob-warn" class="error" style="display:none">ต้องการอย่างน้อย 4 คน</div>
+
+  <div class="spacer"></div>
+  <button id="btn-start" class="btn btn-primary" style="display:none" onclick="startGame()">▶ เริ่มเกม</button>
+  <div id="lob-wait" class="info-row" style="display:none">รอโฮสต์เริ่มเกม...</div>
+</div>
+
+<!-- ══ 3. ROLE REVEAL ══ -->
+<div id="s-reveal" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:18px;">
+    <h2>บทบาทของคุณ</h2>
+    <div class="role-card">
+      <div id="rev-emoji" class="role-emoji">❓</div>
+      <div id="rev-name" class="role-name">—</div>
+      <div id="rev-desc" class="role-desc">—</div>
+      <div id="rev-team" class="role-team" style="display:none"></div>
+    </div>
+    <div class="countdown-ring" id="rev-count">8</div>
+    <div class="countdown-label">วินาที ก่อนกลางคืนเริ่ม</div>
+  </div>
+</div>
+
+<!-- ══ 4. NIGHT ══ -->
+<div id="s-night" class="screen">
+  <div class="phase-banner phase-night">🌙 กลางคืน — วันที่ <span id="night-day">1</span></div>
+
+  <!-- Wolf -->
+  <div id="n-wolf" style="display:none;flex-direction:column;gap:12px;">
+    <h3>🩸 เลือกเหยื่อ</h3>
+    <div id="wolf-vote-box" class="wolf-info-box" style="display:none"></div>
+    <div id="wolf-targets" class="action-list"></div>
+    <div id="wolf-wait" class="info-row" style="display:none">รอสมาชิกในทีมโหวต...</div>
+  </div>
+
+  <!-- Seer -->
+  <div id="n-seer" style="display:none;flex-direction:column;gap:12px;">
+    <h3>🔮 ตรวจสอบบทบาท</h3>
+    <div id="seer-targets" class="action-list"></div>
+    <div id="seer-result" class="seer-result-box" style="display:none"></div>
+  </div>
+
+  <!-- Doctor -->
+  <div id="n-doctor" style="display:none;flex-direction:column;gap:12px;">
+    <h3>💉 เลือกผู้ที่จะรักษา</h3>
+    <div id="doc-targets" class="action-list"></div>
+    <div id="doc-done" class="info-row" style="display:none">✅ บันทึกแล้ว รอรุ่งเช้า...</div>
+  </div>
+
+  <!-- Villager / spectator -->
+  <div id="n-idle" style="display:none;">
+    <div class="waiting-msg">
+      <div class="icon" id="n-idle-icon">😴</div>
+      <div id="n-idle-msg">คุณกำลังนอนหลับ รอรุ่งเช้า...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 5. DAY ══ -->
+<div id="s-day" class="screen">
+  <div class="phase-banner phase-day">☀️ รุ่งเช้า — วันที่ <span id="day-day">1</span></div>
+
+  <div id="day-ann" class="announcement"></div>
+
+  <div class="section-title">โหวตเลือกผู้ต้องสงสัย</div>
+  <div class="vote-label">โหวตแล้ว <span id="v-count">0</span>/<span id="v-total">0</span> คน</div>
+  <div class="vote-bar-wrap"><div class="vote-bar" id="v-bar" style="width:0%"></div></div>
+
+  <div id="vote-list" class="action-list"></div>
+
+  <div id="day-spectate" class="waiting-msg" style="display:none">
+    <div class="icon">👻</div>
+    <div>คุณตายแล้ว — กำลังสังเกตการณ์</div>
+  </div>
+</div>
+
+<!-- ══ 6. GAME OVER ══ -->
+<div id="s-gameover" class="screen">
+  <div id="go-banner" class="winner-banner">—</div>
+  <div id="go-my-result" style="text-align:center;font-size:18px;color:#aaa;"></div>
+
+  <div class="section-title">บทบาทของทุกคน</div>
+  <div id="go-players" class="player-list"></div>
+
+  <div class="spacer"></div>
+  <button class="btn btn-primary" onclick="location.href='/werewolf.html'">เล่นอีกครั้ง</button>
+  <button class="btn" style="border-color:#333;color:#555;" onclick="location.href='/'">กลับหน้าหลัก</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  let myId = null, myRole = null, myName = '', isHost = false, roomCode = '';
+  let allPlayers = [];    // { id, name, role?, alive }
+  let alivePlayers = [];  // { id, name } — from server
+  let wolfTeammateIds = [];
+  let hasActedNight = false, hasVoted = false;
+  let revealTimer = null;
+
+  const ROLES = {
+    werewolf: { emoji: '🐺', name: 'มนุษย์หมาป่า', desc: 'ฆ่าชาวบ้านในตอนกลางคืน ชนะเมื่อจำนวนหมาป่า ≥ ชาวบ้านที่เหลือ', tagClass: 'tag-werewolf' },
+    villager: { emoji: '👨‍🌾', name: 'ชาวบ้าน',       desc: 'ไม่มีความสามารถพิเศษ ช่วยโหวตกำจัดมนุษย์หมาป่า',                    tagClass: 'tag-villager' },
+    seer:     { emoji: '🔮', name: 'หมอดู',         desc: 'ทุกคืนดูบทบาทของผู้เล่นหนึ่งคนได้',                                tagClass: 'tag-seer'     },
+    doctor:   { emoji: '💉', name: 'แพทย์',         desc: 'ทุกคืนปกป้องผู้เล่นหนึ่งคน (รวมตัวเอง) จากการถูกฆ่า',              tagClass: 'tag-doctor'   },
+  };
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function roleTag(role) {
+    const r = ROLES[role] || ROLES.villager;
+    return `<span class="tag ${r.tagClass}">${r.emoji} ${r.name}</span>`;
+  }
+
+  // ── HOME ──────────────────────────────────
+  function createRoom() {
+    const name = document.getElementById('inp-name').value.trim();
+    if (!name) return setErr('กรุณาใส่ชื่อ');
+    myName = name;
+    socket.emit('create-room', { name });
+  }
+
+  function joinRoom() {
+    const name = document.getElementById('inp-name').value.trim();
+    const code = document.getElementById('inp-code').value.trim().toUpperCase();
+    if (!name) return setErr('กรุณาใส่ชื่อ');
+    if (code.length !== 4) return setErr('กรุณาใส่รหัสห้อง 4 ตัวอักษร');
+    myName = name;
+    socket.emit('join-room', { code, name });
+  }
+
+  function setErr(msg) { document.getElementById('home-err').textContent = msg; }
+
+  // ── LOBBY ─────────────────────────────────
+  function copyCode() {
+    navigator.clipboard?.writeText(roomCode).catch(() => {});
+    const el = document.getElementById('lob-code');
+    const prev = el.textContent;
+    el.textContent = 'คัดลอก!';
+    setTimeout(() => el.textContent = prev, 1400);
+  }
+
+  function renderLobby(players) {
+    document.getElementById('lob-code').textContent = roomCode;
+    document.getElementById('lob-cnt').textContent = players.length;
+
+    document.getElementById('lob-players').innerHTML = players.map(p =>
+      `<div class="player-item">
+        <span>${p.isHost ? '👑 ' : ''}${p.name}</span>
+        ${p.id === myId ? '<span class="badge">คุณ</span>' : ''}
+      </div>`
+    ).join('');
+
+    const enough = players.length >= 4;
+    document.getElementById('lob-warn').style.display = enough ? 'none' : 'block';
+
+    if (isHost) {
+      document.getElementById('btn-start').style.display = 'block';
+      document.getElementById('btn-start').disabled = !enough;
+      document.getElementById('lob-wait').style.display = 'none';
+    } else {
+      document.getElementById('btn-start').style.display = 'none';
+      document.getElementById('lob-wait').style.display = 'block';
+    }
+  }
+
+  function startGame() { socket.emit('start-game'); }
+
+  // ── ROLE REVEAL ───────────────────────────
+  function showReveal(role, teammates) {
+    const r = ROLES[role] || ROLES.villager;
+    document.getElementById('rev-emoji').textContent = r.emoji;
+    document.getElementById('rev-name').textContent = r.name;
+    document.getElementById('rev-desc').textContent = r.desc;
+
+    const teamEl = document.getElementById('rev-team');
+    if (role === 'werewolf' && teammates.length > 0) {
+      teamEl.style.display = 'block';
+      teamEl.textContent = '🐺 ทีม: ' + teammates.map(t => t.name).join(', ');
+    } else {
+      teamEl.style.display = 'none';
+    }
+
+    let c = 8;
+    clearInterval(revealTimer);
+    document.getElementById('rev-count').textContent = c;
+    revealTimer = setInterval(() => {
+      c--;
+      document.getElementById('rev-count').textContent = c;
+      if (c <= 0) clearInterval(revealTimer);
+    }, 1000);
+
+    show('s-reveal');
+  }
+
+  // ── NIGHT ─────────────────────────────────
+  function showNight(day, players) {
+    document.getElementById('night-day').textContent = day;
+    alivePlayers = players;
+    hasActedNight = false;
+
+    ['n-wolf','n-seer','n-doctor','n-idle'].forEach(id => {
+      document.getElementById(id).style.display = 'none';
+    });
+
+    const me = allPlayers.find(p => p.id === myId);
+    const alive = !me || me.alive !== false;
+
+    if (!alive) {
+      showIdle('👻', 'คุณตายแล้ว — กำลังสังเกตการณ์');
+    } else if (myRole === 'werewolf') {
+      showWolfPanel();
+    } else if (myRole === 'seer') {
+      showSeerPanel();
+    } else if (myRole === 'doctor') {
+      showDoctorPanel();
+    } else {
+      showIdle('😴', 'คุณกำลังนอนหลับ รอรุ่งเช้า...');
+    }
+
+    show('s-night');
+  }
+
+  function showIdle(icon, msg) {
+    document.getElementById('n-idle').style.display = 'flex';
+    document.getElementById('n-idle-icon').textContent = icon;
+    document.getElementById('n-idle-msg').textContent = msg;
+  }
+
+  function showWolfPanel() {
+    const panel = document.getElementById('n-wolf');
+    panel.style.display = 'flex';
+    document.getElementById('wolf-vote-box').style.display = 'none';
+    document.getElementById('wolf-wait').style.display = 'none';
+
+    const targets = alivePlayers.filter(p => p.id !== myId && !wolfTeammateIds.includes(p.id));
+    document.getElementById('wolf-targets').innerHTML = targets.map(p =>
+      `<button class="action-btn" id="wt-${p.id}" onclick="nightAct('${p.id}')">🩸 ${p.name}</button>`
+    ).join('');
+  }
+
+  function showSeerPanel() {
+    document.getElementById('n-seer').style.display = 'flex';
+    document.getElementById('seer-result').style.display = 'none';
+
+    const targets = alivePlayers.filter(p => p.id !== myId);
+    document.getElementById('seer-targets').innerHTML = targets.map(p =>
+      `<button class="action-btn" id="st-${p.id}" onclick="nightAct('${p.id}')">🔍 ${p.name}</button>`
+    ).join('');
+  }
+
+  function showDoctorPanel() {
+    document.getElementById('n-doctor').style.display = 'flex';
+    document.getElementById('doc-done').style.display = 'none';
+
+    document.getElementById('doc-targets').innerHTML = alivePlayers.map(p =>
+      `<button class="action-btn" id="dt-${p.id}" onclick="nightAct('${p.id}')">💊 ${p.name}${p.id === myId ? ' (ตัวเอง)' : ''}</button>`
+    ).join('');
+  }
+
+  function nightAct(targetId) {
+    if (hasActedNight) return;
+    hasActedNight = true;
+    socket.emit('night-action', { targetId });
+
+    if (myRole === 'werewolf') {
+      document.querySelectorAll('#wolf-targets .action-btn').forEach(b => b.disabled = true);
+      document.getElementById(`wt-${targetId}`)?.classList.add('selected');
+      document.getElementById('wolf-wait').style.display = 'block';
+    } else if (myRole === 'seer') {
+      document.querySelectorAll('#seer-targets .action-btn').forEach(b => b.disabled = true);
+    } else if (myRole === 'doctor') {
+      document.querySelectorAll('#doc-targets .action-btn').forEach(b => b.disabled = true);
+      document.getElementById(`dt-${targetId}`)?.classList.add('selected');
+      document.getElementById('doc-done').style.display = 'block';
+    }
+  }
+
+  // ── DAY ───────────────────────────────────
+  function showDay(day, eliminated, players) {
+    document.getElementById('day-day').textContent = day;
+    alivePlayers = players;
+    hasVoted = false;
+
+    const ann = document.getElementById('day-ann');
+    if (eliminated) {
+      ann.className = 'announcement death';
+      ann.innerHTML = `<div style="font-size:38px;">💀</div>
+        <div style="font-size:20px;margin-top:8px;font-weight:bold;">${eliminated.name}</div>
+        <div style="color:#aaa;margin-top:6px;">บทบาท: ${roleTag(eliminated.role)}</div>`;
+    } else {
+      ann.className = 'announcement safe';
+      ann.innerHTML = `<div style="font-size:38px;">🌅</div>
+        <div style="font-size:18px;margin-top:8px;">ไม่มีใครตายคืนนี้!</div>`;
+    }
+
+    const me = allPlayers.find(p => p.id === myId);
+    const alive = !me || me.alive !== false;
+
+    document.getElementById('day-spectate').style.display = alive ? 'none' : 'flex';
+
+    setVoteProgress(0, players.length);
+
+    if (alive) {
+      document.getElementById('vote-list').innerHTML = players
+        .filter(p => p.id !== myId)
+        .map(p => `<button class="action-btn" id="vb-${p.id}" onclick="castVote('${p.id}')">🗳 ${p.name}</button>`)
+        .join('');
+    } else {
+      document.getElementById('vote-list').innerHTML = '';
+    }
+
+    show('s-day');
+  }
+
+  function castVote(targetId) {
+    if (hasVoted) return;
+    hasVoted = true;
+    socket.emit('vote', { targetId });
+    document.querySelectorAll('#vote-list .action-btn').forEach(b => b.disabled = true);
+    document.getElementById(`vb-${targetId}`)?.classList.add('voted');
+  }
+
+  function setVoteProgress(count, total) {
+    document.getElementById('v-count').textContent = count;
+    document.getElementById('v-total').textContent = total;
+    document.getElementById('v-bar').style.width = total ? `${(count / total) * 100}%` : '0%';
+  }
+
+  // ── GAME OVER ─────────────────────────────
+  function showGameOver(winner, players) {
+    const banner = document.getElementById('go-banner');
+    if (winner === 'werewolf') {
+      banner.className = 'winner-banner winner-wolf';
+      banner.innerHTML = '🐺 มนุษย์หมาป่า ชนะ!';
+    } else {
+      banner.className = 'winner-banner winner-village';
+      banner.innerHTML = '🌾 ชาวบ้าน ชนะ!';
+    }
+
+    const me = players.find(p => p.id === myId);
+    const myTeam = me?.role === 'werewolf' ? 'werewolf' : 'villager';
+    document.getElementById('go-my-result').textContent =
+      myTeam === winner ? '🏆 คุณชนะ!' : '😔 คุณแพ้';
+
+    document.getElementById('go-players').innerHTML = players.map(p =>
+      `<div class="result-row ${p.alive ? '' : 'dead'}">
+        <span>${p.alive ? '' : '💀 '}${p.name}${p.id === myId ? ' (คุณ)' : ''}</span>
+        ${roleTag(p.role)}
+      </div>`
+    ).join('');
+
+    show('s-gameover');
+  }
+
+  // ── SOCKET EVENTS ─────────────────────────
+  socket.on('room-created', ({ code, players, playerId }) => {
+    myId = playerId; roomCode = code; isHost = true;
+    allPlayers = players.map(p => ({ ...p, alive: true }));
+    renderLobby(players);
+    show('s-lobby');
+  });
+
+  socket.on('joined-room', ({ code, players, playerId }) => {
+    myId = playerId; roomCode = code; isHost = false;
+    allPlayers = players.map(p => ({ ...p, alive: true }));
+    renderLobby(players);
+    show('s-lobby');
+  });
+
+  socket.on('lobby-update', ({ players }) => {
+    allPlayers = players.map(p => ({ ...p, alive: true }));
+    renderLobby(players);
+  });
+
+  socket.on('join-error', msg => setErr(msg));
+
+  socket.on('game-started', ({ role, teammates, players }) => {
+    myRole = role;
+    wolfTeammateIds = teammates.map(t => t.id);
+    allPlayers = players.map(p => ({ id: p.id, name: p.name, alive: true }));
+    // add own role
+    const me = allPlayers.find(p => p.id === myId);
+    if (me) me.role = role;
+    // add wolf teammates roles
+    if (role === 'werewolf') {
+      teammates.forEach(t => {
+        const tp = allPlayers.find(p => p.id === t.id);
+        if (tp) tp.role = 'werewolf';
+      });
+    }
+    showReveal(role, teammates);
+  });
+
+  socket.on('night-start', ({ day, players }) => {
+    showNight(day, players);
+  });
+
+  socket.on('wolf-vote-update', ({ voterName, targetName }) => {
+    const box = document.getElementById('wolf-vote-box');
+    box.style.display = 'block';
+    box.textContent = `🐺 ${voterName} เลือก ${targetName}`;
+  });
+
+  socket.on('seer-result', ({ targetName, isWerewolf }) => {
+    const el = document.getElementById('seer-result');
+    el.style.display = 'block';
+    el.innerHTML = isWerewolf
+      ? `<div style="font-size:40px;">🐺</div><div style="margin-top:10px;color:#e74c3c;font-size:17px;"><strong>${targetName}</strong><br>เป็นมนุษย์หมาป่า!</div>`
+      : `<div style="font-size:40px;">👨‍🌾</div><div style="margin-top:10px;color:#27ae60;font-size:17px;"><strong>${targetName}</strong><br>ไม่ใช่มนุษย์หมาป่า</div>`;
+  });
+
+  socket.on('day-start', ({ day, eliminated, players }) => {
+    if (eliminated) {
+      const p = allPlayers.find(p => p.id === eliminated.id);
+      if (p) { p.alive = false; p.role = eliminated.role; }
+    }
+    alivePlayers = players;
+    showDay(day, eliminated, players);
+  });
+
+  socket.on('vote-update', ({ votes, voteCount, aliveCount }) => {
+    setVoteProgress(voteCount, aliveCount);
+
+    // show vote counts on buttons
+    const tally = {};
+    Object.values(votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
+    alivePlayers.forEach(p => {
+      const btn = document.getElementById(`vb-${p.id}`);
+      if (!btn) return;
+      const cnt = tally[p.id] || 0;
+      btn.textContent = `🗳 ${p.name}${cnt ? ` (${cnt})` : ''}`;
+    });
+  });
+
+  socket.on('vote-result', ({ eliminated, tied }) => {
+    const ann = document.getElementById('day-ann');
+    if (tied) {
+      ann.className = 'announcement';
+      ann.innerHTML = `<div style="font-size:36px;">⚖️</div>
+        <div style="font-size:17px;margin-top:8px;">โหวตเสมอกัน — ไม่มีใครถูกเนรเทศ</div>`;
+    } else if (eliminated) {
+      ann.className = 'announcement vote-out';
+      const p = allPlayers.find(p => p.id === eliminated.id);
+      if (p) { p.alive = false; p.role = eliminated.role; }
+      ann.innerHTML = `<div style="font-size:36px;">⚖️</div>
+        <div style="font-size:19px;margin-top:8px;">ชาวบ้านโหวต <strong>${eliminated.name}</strong> ออก</div>
+        <div style="color:#aaa;margin-top:6px;">บทบาท: ${roleTag(eliminated.role)}</div>`;
+    }
+    document.querySelectorAll('#vote-list .action-btn').forEach(b => b.disabled = true);
+  });
+
+  socket.on('game-over', ({ winner, players }) => {
+    // update allPlayers with full role info
+    players.forEach(sp => {
+      const p = allPlayers.find(p => p.id === sp.id);
+      if (p) { p.role = sp.role; p.alive = sp.alive; }
+    });
+    showGameOver(winner, players);
+  });
+</script>
+</body>
+</html>
