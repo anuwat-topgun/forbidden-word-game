@@ -178,7 +178,7 @@ function activateHunters(room, hunters, onDone) {
 }
 
 function resolveVote(room) {
-  if (!['day', 'voting'].includes(room.phase)) return;
+  if (!['day', 'voting', 'resolving'].includes(room.phase)) return;
 
   const tally = {};
   Object.values(room.votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
