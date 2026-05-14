@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#000000">
   <link rel="apple-touch-icon" href="icon.png">
 
-  <title>เกมส์คำต้องห้าม</title>
+  <title>เกมส์</title>
 
   <style>
     * { box-sizing: border-box; }
@@ -27,10 +27,49 @@
       color: #fff;
     }
 
-    #container {
+    /* ── หน้าเมนู ── */
+    #menu {
       width: 100%;
       height: 100%;
       display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+    }
+
+    #menu h1 {
+      font-size: 8vw;
+      margin: 0 0 16px;
+      letter-spacing: 2px;
+    }
+
+    .menu-btn {
+      width: 70vw;
+      max-width: 320px;
+      padding: 20px 0;
+      font-size: 5vw;
+      font-weight: bold;
+      border: 3px solid #fff;
+      border-radius: 16px;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      position: static;
+      bottom: unset;
+    }
+
+    .menu-btn:hover, .menu-btn:active {
+      background: #fff;
+      color: #000;
+    }
+
+    /* ── หน้าเกมคำต้องห้าม ── */
+    #container {
+      width: 100%;
+      height: 100%;
+      display: none;
       justify-content: center;
       align-items: center;
       position: relative;
@@ -55,18 +94,34 @@
       background: #000;
     }
 
-    button {
+    #btn {
       position: absolute;
       bottom: 20px;
       font-size: 18px;
       padding: 10px 20px;
     }
 
+    #back-btn {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      font-size: 16px;
+      padding: 8px 16px;
+      background: transparent;
+      color: #fff;
+      border: 2px solid #fff;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
     @media (orientation: portrait) {
       #rotate { display: flex; }
-      #container > *:not(#rotate) { display: none !important; }
+      #container > *:not(#rotate):not(#back-btn) { display: none !important; }
+
+      #menu h1 { font-size: 10vw; }
+      .menu-btn { font-size: 6vw; }
     }
-  
+
     #version {
       position: absolute;
       right: 10px;
@@ -78,13 +133,21 @@
 </head>
 <body>
 
+  <!-- หน้าเมนูหลัก -->
+  <div id="menu">
+    <h1>🎮 เลือกเกมส์</h1>
+    <button class="menu-btn" onclick="openGame('forbidden')">🚫 คำต้องห้าม</button>
+    <button class="menu-btn" onclick="openGame('werewolf')">🐺 Werewolf</button>
+  </div>
+
+  <!-- หน้าเกมคำต้องห้าม -->
   <div id="container">
+    <button id="back-btn" onclick="goHome()">← กลับ</button>
     <div id="countdown"></div>
     <div id="word"></div>
     <div id="rotate">กรุณาหมุนหน้าจอเป็นแนวนอน</div>
-
     <button id="btn" onclick="startGame()">สุ่มคำ</button>
-      <div id="version">v1.1.0</div>
+    <div id="version">v1.1.0</div>
   </div>
 
   <script>
@@ -128,6 +191,21 @@
       "บน","ล่าง","ซ้าย","ขวา","หน้า","หลัง","ใน","นอก","ข้าง","กลาง",
       "เอา","ให้","มี","เป็น","ใช้","ทำ","ไป","มา","อยู่","ได้"
     ];
+
+    function openGame(game) {
+      document.getElementById('menu').style.display = 'none';
+      if (game === 'forbidden') {
+        document.getElementById('container').style.display = 'flex';
+      } else if (game === 'werewolf') {
+        alert('เกมส์ Werewolf กำลังจะมาเร็วๆ นี้!');
+        document.getElementById('menu').style.display = 'flex';
+      }
+    }
+
+    function goHome() {
+      document.getElementById('container').style.display = 'none';
+      document.getElementById('menu').style.display = 'flex';
+    }
 
     function startGame() {
       // ถ้าคำหมดแล้ว รีเซ็ตใหม่
