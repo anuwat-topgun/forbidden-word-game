@@ -375,9 +375,19 @@
   <button class="btn" style="border-color:#333;color:#555;" onclick="location.href='/'">กลับหน้าหลัก</button>
 </div>
 
+<script>
+  // ── Server URL config ──────────────────────────────────────────────────────
+  // ถ้า frontend อยู่บน Vercel แต่ backend อยู่ที่อื่น
+  // ให้เพิ่ม ?server=https://your-backend.railway.app ใน URL
+  // หรือ set window.SOCKET_SERVER ก่อนเปิดหน้านี้
+  const _serverUrl = (() => {
+    const p = new URLSearchParams(location.search).get('server');
+    return p || window.SOCKET_SERVER || location.origin;
+  })();
+</script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
-  const socket = io();
+  const socket = io(_serverUrl, { transports: ['websocket', 'polling'] });
 
   let myId = null, myRole = null, myName = '', isHost = false, roomCode = '';
   let allPlayers = [];    // { id, name, role?, alive }
