@@ -140,22 +140,50 @@
 </head>
 <body>
 
-<!-- ══ HOME ══ -->
+<!-- ══ HOME : Step 1 — เลือก action ══ -->
 <div id="s-home" class="screen active">
-  <div style="padding-top:36px;text-align:center">
-    <div style="font-size:68px">🐺</div>
-    <div style="font-size:30px;font-weight:bold;margin-top:6px">Werewolf</div>
-    <div style="color:#444;font-size:13px;margin-top:3px">4–12 ผู้เล่น</div>
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px">
+    <div style="text-align:center">
+      <div style="font-size:72px">🐺</div>
+      <div style="font-size:30px;font-weight:bold;margin-top:8px">Werewolf</div>
+      <div style="color:#444;font-size:13px;margin-top:4px">4–12 ผู้เล่น</div>
+    </div>
+    <button class="btn primary" onclick="homeStep('create')">🏠 สร้างห้อง</button>
+    <button class="btn"         onclick="homeStep('join')">🚪 เข้าร่วมห้อง</button>
   </div>
-  <input id="inp-name" type="text" placeholder="ชื่อของคุณ" maxlength="15" autocomplete="off">
-  <button class="btn primary" onclick="createRoom()">สร้างห้อง</button>
-  <div class="divider">หรือเข้าร่วม</div>
-  <input id="inp-code" type="text" placeholder="รหัสห้อง 4 ตัว" maxlength="4"
-    style="text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:20px" autocomplete="off">
-  <button class="btn" onclick="joinRoom()">เข้าร่วมห้อง</button>
-  <div id="home-err" class="err"></div>
-  <div class="spacer"></div>
   <button class="btn muted" onclick="location.href='/'">← กลับหน้าหลัก</button>
+</div>
+
+<!-- ══ HOME : Step 2a — สร้างห้อง ══ -->
+<div id="s-create" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px">
+    <div style="text-align:center">
+      <div style="font-size:48px">🏠</div>
+      <div style="font-size:22px;font-weight:bold;margin-top:8px">สร้างห้อง</div>
+    </div>
+    <input id="create-name" type="text" placeholder="ชื่อของคุณ" maxlength="15" autocomplete="off"
+      onkeydown="if(event.key==='Enter') createRoom()">
+    <button class="btn primary" onclick="createRoom()">สร้างห้อง</button>
+    <div id="create-err" class="err"></div>
+  </div>
+  <button class="btn muted" onclick="homeStep(null)">← ย้อนกลับ</button>
+</div>
+
+<!-- ══ HOME : Step 2b — เข้าร่วมห้อง ══ -->
+<div id="s-join" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px">
+    <div style="text-align:center">
+      <div style="font-size:48px">🚪</div>
+      <div style="font-size:22px;font-weight:bold;margin-top:8px">เข้าร่วมห้อง</div>
+    </div>
+    <input id="join-name" type="text" placeholder="ชื่อของคุณ" maxlength="15" autocomplete="off">
+    <input id="join-code" type="text" placeholder="รหัสห้อง 4 ตัว" maxlength="4"
+      style="text-transform:uppercase;letter-spacing:8px;text-align:center;font-size:22px"
+      autocomplete="off" onkeydown="if(event.key==='Enter') joinRoom()">
+    <button class="btn primary" onclick="joinRoom()">เข้าร่วม</button>
+    <div id="join-err" class="err"></div>
+  </div>
+  <button class="btn muted" onclick="homeStep(null)">← ย้อนกลับ</button>
 </div>
 
 <!-- ══ LOBBY ══ -->
@@ -368,19 +396,32 @@
   function fmtTime(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` }
 
   // ── HOME ─────────────────────────────────────────────────────────────────────
+  function homeStep(mode) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if (mode === 'create') {
+      document.getElementById('s-create').classList.add('active');
+      setTimeout(() => document.getElementById('create-name').focus(), 50);
+    } else if (mode === 'join') {
+      document.getElementById('s-join').classList.add('active');
+      setTimeout(() => document.getElementById('join-name').focus(), 50);
+    } else {
+      document.getElementById('s-home').classList.add('active');
+    }
+  }
   function createRoom() {
-    const name = document.getElementById('inp-name').value.trim();
-    if (!name) return setErr('กรุณาใส่ชื่อ');
+    const name = document.getElementById('create-name').value.trim();
+    if (!name) { document.getElementById('create-err').textContent = 'กรุณาใส่ชื่อ'; return; }
+    document.getElementById('create-err').textContent = '';
     myName = name; socket.emit('create-room', { name });
   }
   function joinRoom() {
-    const name = document.getElementById('inp-name').value.trim();
-    const code = document.getElementById('inp-code').value.trim().toUpperCase();
-    if (!name) return setErr('กรุณาใส่ชื่อ');
-    if (code.length !== 4) return setErr('กรุณาใส่รหัสห้อง 4 ตัวอักษร');
+    const name = document.getElementById('join-name').value.trim();
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    if (!name) { document.getElementById('join-err').textContent = 'กรุณาใส่ชื่อ'; return; }
+    if (code.length !== 4) { document.getElementById('join-err').textContent = 'กรุณาใส่รหัสห้อง 4 ตัวอักษร'; return; }
+    document.getElementById('join-err').textContent = '';
     myName = name; socket.emit('join-room', { code, name });
   }
-  function setErr(m) { document.getElementById('home-err').textContent = m; }
 
   // ── LOBBY ────────────────────────────────────────────────────────────────────
   function copyCode() {
@@ -704,7 +745,13 @@
     allPlayers = players.map(p => ({...p, alive:true}));
     renderLobby(players);
   });
-  socket.on('join-error', m => setErr(m));
+  socket.on('join-error', m => {
+    // show error in whichever create/join screen is active
+    const joinErr   = document.getElementById('join-err');
+    const createErr = document.getElementById('create-err');
+    if (document.getElementById('s-join').classList.contains('active'))   joinErr.textContent   = m;
+    else if (document.getElementById('s-create').classList.contains('active')) createErr.textContent = m;
+  });
 
   socket.on('game-started', ({ role, teammates, allPlayers: ap }) => {
     myRole = role;
