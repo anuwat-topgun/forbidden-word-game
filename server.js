@@ -10,6 +10,9 @@ app.use(express.static(path.join(__dirname)));
 
 const rooms = {};
 
+const DISCUSS_SEC = 90; // discussion time before voting opens
+const CONFIRM_SEC = 30; // confirmation time after vote tallied
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function genCode() {
@@ -39,20 +42,18 @@ function buildRoles(n) {
   const roles = [];
   const wolves = n <= 6 ? 1 : n <= 9 ? 2 : 3;
   for (let i = 0; i < wolves; i++) roles.push('werewolf');
-
   roles.push('seer');
   if (n >= 5)              roles.push('bodyguard');
   if (n >= 7)              roles.push('hunter');
   if (n >= 8)              roles.push('mason', 'mason');
   if (n >= 9)              roles.push('witch');
   if (wolves >= 2 && n >= 8) roles.push('minion');
-
   while (roles.length < n) roles.push('villager');
   return shuffle(roles);
 }
 
 function alivePlaying(room) {
-  return room.players.filter(p => p.alive && p.role !== 'moderator');
+  return room.players.filter(p => p.alive);
 }
 
 function aliveSummary(room) {
@@ -63,18 +64,18 @@ function checkWin(room) {
   const alive = alivePlaying(room);
   const wolves = alive.filter(p => p.role === 'werewolf').length;
   const good   = alive.length - wolves;
-  if (wolves === 0)    return 'villager';
-  if (wolves >= good)  return 'werewolf';
+  if (wolves === 0)   return 'villager';
+  if (wolves >= good) return 'werewolf';
   return null;
 }
 
-// ── Night helpers ─────────────────────────────────────────────────────────────
+// ── Night ─────────────────────────────────────────────────────────────────────
 
 function buildNightPending(room) {
   const p = new Set();
-  if (room.players.some(p => p.role === 'werewolf'  && p.alive)) p.add('werewolf');
-  if (room.players.some(p => p.role === 'seer'       && p.alive)) p.add('seer');
-  if (room.players.some(p => p.role === 'bodyguard'  && p.alive)) p.add('bodyguard');
+  if (room.players.some(p => p.role === 'werewolf' && p.alive)) p.add('werewolf');
+  if (room.players.some(p => p.role === 'seer'      && p.alive)) p.add('seer');
+  if (room.players.some(p => p.role === 'bodyguard' && p.alive)) p.add('bodyguard');
   return p;
 }
 
@@ -89,13 +90,14 @@ function checkNightResolution(room) {
   }
 }
 
-// ── Game flow ─────────────────────────────────────────────────────────────────
-
 function startNight(room) {
+  clearTimeout(room.discussionTimer);
+  clearTimeout(room.confirmTimer);
+
   room.phase = 'night';
-  room.nightActions  = {};
-  room.wolfVotes     = {};
-  room.witchWaiting  = false;
+  room.nightActions = {};
+  room.wolfVotes    = {};
+  room.witchWaiting = false;
 
   io.to(room.code).emit('night-start', {
     day: room.day,
@@ -104,7 +106,6 @@ function startNight(room) {
   });
 
   if (room.day === 1) {
-    // Night 1: no kills — just introductions, auto-advance after 15s
     room.nightPending = new Set();
     setTimeout(() => {
       if (room.phase === 'night' && room.day === 1) startDay(room, []);
@@ -119,10 +120,10 @@ function startNight(room) {
 function resolveNight(room) {
   if (room.phase !== 'night') return;
 
-  const wolfTarget   = getMajority(room.wolfVotes);
-  const witchSave    = room.nightActions.witchSave  || null;
-  const witchKill    = room.nightActions.witchKill  || null;
-  const bodyguardSave = room.nightActions.bodyguard || null;
+  const wolfTarget    = getMajority(room.wolfVotes);
+  const witchSave     = room.nightActions.witchSave  || null;
+  const witchKill     = room.nightActions.witchKill  || null;
+  const bodyguardSave = room.nightActions.bodyguard  || null;
 
   const eliminated = [];
 
@@ -139,7 +140,10 @@ function resolveNight(room) {
   triggerOrStartDay(room, eliminated);
 }
 
+// ── Day ───────────────────────────────────────────────────────────────────────
+
 function startDay(room, eliminated) {
+  clearTimeout(room.discussionTimer);
   room.phase = 'day';
   room.votes = {};
 
@@ -150,45 +154,66 @@ function startDay(room, eliminated) {
     day: room.day,
     eliminated: eliminated.map(p => ({ id: p.id, name: p.name, role: p.role })),
     players: aliveSummary(room),
-    moderatorMode: room.moderatorMode,
+    discussionSec: DISCUSS_SEC,
   });
+
+  // Auto-open voting after discussion timer
+  room.discussionTimer = setTimeout(() => {
+    if (room.phase === 'day') openVoting(room);
+  }, DISCUSS_SEC * 1000);
 }
 
-// Handle hunter chain before starting day or going to next night
-function triggerOrStartDay(room, eliminated) {
-  const hunters = eliminated.filter(p => p.role === 'hunter');
-  if (hunters.length > 0) {
-    activateHunters(room, hunters, () => startDay(room, eliminated));
-  } else {
-    startDay(room, eliminated);
-  }
+function openVoting(room) {
+  if (room.phase !== 'day') return;
+  room.phase  = 'voting';
+  room.votes  = {};
+  io.to(room.code).emit('vote-open', { players: aliveSummary(room) });
 }
 
-function activateHunters(room, hunters, onDone) {
-  room.phase = 'hunter-shooting';
-  room.huntersPending = new Set(hunters.map(h => h.id));
-  room.hunterOnDone = onDone;
-
-  hunters.forEach(h => {
-    io.to(h.id).emit('hunter-shoot', {
-      players: aliveSummary(room).filter(p => p.id !== h.id),
-    });
-  });
-  io.to(room.code).emit('hunter-shooting', { names: hunters.map(h => h.name) });
-}
-
-function resolveVote(room) {
-  if (!['day', 'voting', 'resolving'].includes(room.phase)) return;
-
+function startConfirmation(room) {
   const tally = {};
   Object.values(room.votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
 
   const maxV = Math.max(0, ...Object.values(tally));
   const tied = Object.entries(tally).filter(([, c]) => c === maxV);
 
+  // Tied → skip confirmation, go straight to no-kill
+  if (tied.length !== 1) {
+    io.to(room.code).emit('vote-result', { eliminated: null, tied: true, tannerWin: false });
+    const winner = checkWin(room);
+    if (winner) { setTimeout(() => endGame(room, winner), 3000); return; }
+    room.day++;
+    setTimeout(() => startNight(room), 4000);
+    return;
+  }
+
+  const proposedPlayer = room.players.find(p => p.id === tied[0][0] && p.alive);
+  room.phase          = 'confirming';
+  room.confirmVotes   = {};
+  room.proposedTarget = proposedPlayer || null;
+
+  io.to(room.code).emit('confirm-request', {
+    target: proposedPlayer ? { id: proposedPlayer.id, name: proposedPlayer.name } : null,
+    confirmSec: CONFIRM_SEC,
+  });
+
+  // Auto-resolve if time runs out
+  room.confirmTimer = setTimeout(() => {
+    if (room.phase === 'confirming') resolveConfirmation(room);
+  }, CONFIRM_SEC * 1000);
+}
+
+function resolveConfirmation(room) {
+  if (room.phase !== 'confirming') return;
+  clearTimeout(room.confirmTimer);
+
+  const yesCount = Object.values(room.confirmVotes).filter(v => v === true).length;
+  const noCount  = Object.values(room.confirmVotes).filter(v => v === false).length;
+  const doKill   = yesCount > noCount;
+
   let eliminated = null;
-  if (tied.length === 1) {
-    const p = room.players.find(p => p.id === tied[0][0] && p.alive);
+  if (doKill && room.proposedTarget) {
+    const p = room.players.find(p => p.id === room.proposedTarget.id && p.alive);
     if (p) { p.alive = false; eliminated = p; }
   }
 
@@ -197,6 +222,7 @@ function resolveVote(room) {
     io.to(room.code).emit('vote-result', {
       eliminated: { id: eliminated.id, name: eliminated.name, role: eliminated.role },
       tied: false, tannerWin: true,
+      confirmStats: { yes: yesCount, no: noCount },
     });
     setTimeout(() => endGame(room, 'tanner'), 4000);
     return;
@@ -204,8 +230,10 @@ function resolveVote(room) {
 
   io.to(room.code).emit('vote-result', {
     eliminated: eliminated ? { id: eliminated.id, name: eliminated.name, role: eliminated.role } : null,
-    tied: tied.length > 1,
+    tied: false,
     tannerWin: false,
+    notConfirmed: !doKill && !!room.proposedTarget,
+    confirmStats: { yes: yesCount, no: noCount },
   });
 
   const afterVote = () => {
@@ -222,13 +250,34 @@ function resolveVote(room) {
   }
 }
 
+// ── Hunter ────────────────────────────────────────────────────────────────────
+
+function triggerOrStartDay(room, eliminated) {
+  const hunters = eliminated.filter(p => p.role === 'hunter');
+  if (hunters.length > 0) {
+    activateHunters(room, hunters, () => startDay(room, eliminated));
+  } else {
+    startDay(room, eliminated);
+  }
+}
+
+function activateHunters(room, hunters, onDone) {
+  room.phase        = 'hunter-shooting';
+  room.huntersPending = new Set(hunters.map(h => h.id));
+  room.hunterOnDone = onDone;
+  hunters.forEach(h => {
+    io.to(h.id).emit('hunter-shoot', { players: aliveSummary(room).filter(p => p.id !== h.id) });
+  });
+  io.to(room.code).emit('hunter-shooting', { names: hunters.map(h => h.name) });
+}
+
+// ── End game ──────────────────────────────────────────────────────────────────
+
 function endGame(room, winner) {
   room.phase = 'ended';
   io.to(room.code).emit('game-over', {
-    winner, // 'villager' | 'werewolf' | 'tanner'
-    players: room.players
-      .filter(p => p.role !== 'moderator')
-      .map(p => ({ id: p.id, name: p.name, role: p.role, alive: p.alive })),
+    winner,
+    players: room.players.map(p => ({ id: p.id, name: p.name, role: p.role, alive: p.alive })),
   });
 }
 
@@ -241,9 +290,10 @@ io.on('connection', socket => {
     const player = { id: socket.id, name: name.trim().slice(0, 15), role: null, alive: true, isHost: true };
     rooms[code] = {
       code, players: [player], phase: 'lobby', day: 0,
-      nightActions: {}, wolfVotes: {}, nightPending: new Set(), votes: {},
+      nightActions: {}, wolfVotes: {}, nightPending: new Set(),
+      votes: {}, confirmVotes: {}, proposedTarget: null,
       witchUsedSave: false, witchUsedKill: false, witchWaiting: false,
-      moderatorMode: false, lastBodyguardTarget: null,
+      discussionTimer: null, confirmTimer: null,
     };
     socket.join(code);
     socket.roomCode = code;
@@ -252,7 +302,7 @@ io.on('connection', socket => {
 
   socket.on('join-room', ({ code, name }) => {
     const room = rooms[code?.toUpperCase()];
-    if (!room)                return socket.emit('join-error', '❌ ไม่พบห้องนี้');
+    if (!room)                  return socket.emit('join-error', '❌ ไม่พบห้องนี้');
     if (room.phase !== 'lobby') return socket.emit('join-error', '❌ เกมเริ่มแล้ว');
     if (room.players.length >= 12) return socket.emit('join-error', '❌ ห้องเต็ม (สูงสุด 12 คน)');
 
@@ -262,14 +312,7 @@ io.on('connection', socket => {
     socket.roomCode = code.toUpperCase();
 
     socket.emit('joined-room', { code: code.toUpperCase(), players: room.players, playerId: socket.id });
-    socket.to(code.toUpperCase()).emit('lobby-update', { players: room.players, moderatorMode: room.moderatorMode });
-  });
-
-  socket.on('set-moderator-mode', ({ enabled }) => {
-    const room = rooms[socket.roomCode];
-    if (!room || !room.players.find(p => p.id === socket.id && p.isHost)) return;
-    room.moderatorMode = enabled;
-    io.to(room.code).emit('lobby-update', { players: room.players, moderatorMode: enabled });
+    socket.to(code.toUpperCase()).emit('lobby-update', { players: room.players });
   });
 
   socket.on('start-game', () => {
@@ -277,21 +320,12 @@ io.on('connection', socket => {
     if (!room) return;
     const host = room.players.find(p => p.id === socket.id && p.isHost);
     if (!host) return;
+    if (room.players.length < 4) return socket.emit('join-error', '❌ ต้องมีผู้เล่นอย่างน้อย 4 คน');
 
-    const playing = room.moderatorMode
-      ? room.players.filter(p => !p.isHost)
-      : room.players;
-
-    if (playing.length < 4)
-      return socket.emit('join-error', '❌ ต้องมีผู้เล่นอย่างน้อย 4 คน' + (room.moderatorMode ? ' (ไม่นับ Moderator)' : ''));
-
-    const roles = buildRoles(playing.length);
-    playing.forEach((p, i) => { p.role = roles[i]; p.alive = true; });
-
-    if (room.moderatorMode) { host.role = 'moderator'; host.alive = false; }
+    const roles = buildRoles(room.players.length);
+    room.players.forEach((p, i) => { p.role = roles[i]; p.alive = true; });
     room.day = 1;
 
-    // Send each player their role + teammates
     room.players.forEach(p => {
       let teammates = [];
       if (p.role === 'werewolf')
@@ -302,25 +336,19 @@ io.on('connection', socket => {
         teammates = room.players.filter(pp => pp.role === 'werewolf').map(pp => ({ id: pp.id, name: pp.name }));
 
       io.to(p.id).emit('game-started', {
-        role: p.role,
-        teammates,
-        isModerator: p.role === 'moderator',
-        // Moderator sees all roles
-        allPlayers: p.role === 'moderator'
-          ? room.players.map(pp => ({ id: pp.id, name: pp.name, role: pp.role }))
-          : room.players.map(pp => ({ id: pp.id, name: pp.name })),
+        role: p.role, teammates,
+        allPlayers: room.players.map(pp => ({ id: pp.id, name: pp.name })),
       });
     });
 
     setTimeout(() => startNight(room), 8000);
   });
 
-  // ── Night actions ───────────────────────────────────────────────────────────
+  // ── Night actions ────────────────────────────────────────────────────────────
 
   socket.on('night-action', ({ targetId }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.phase !== 'night') return;
-
     const player = room.players.find(p => p.id === socket.id && p.alive);
     if (!player) return;
 
@@ -337,14 +365,12 @@ io.on('connection', socket => {
 
       if (Object.keys(room.wolfVotes).length >= aliveWolves.length) {
         room.nightPending.delete('werewolf');
-        const wolfTarget = getMajority(room.wolfVotes);
-        room.nightActions.wolfTarget = wolfTarget;
+        room.nightActions.wolfTarget = getMajority(room.wolfVotes);
 
-        // Notify witch (if she has potions) after wolves decide
         if (witchHasAction(room)) {
           room.witchWaiting = true;
-          const witch = room.players.find(p => p.role === 'witch' && p.alive);
-          const target = room.players.find(p => p.id === wolfTarget);
+          const witch  = room.players.find(p => p.role === 'witch' && p.alive);
+          const target = room.players.find(p => p.id === room.nightActions.wolfTarget);
           io.to(witch.id).emit('witch-notify', {
             wolfTarget: target ? { id: target.id, name: target.name } : null,
             hasSavePotion: !room.witchUsedSave,
@@ -352,17 +378,14 @@ io.on('connection', socket => {
           });
         }
       }
-
     } else if (player.role === 'seer') {
       if (!room.nightPending.has('seer')) return;
       const target = room.players.find(p => p.id === targetId);
       if (target) socket.emit('seer-result', { targetName: target.name, isWerewolf: target.role === 'werewolf' });
       room.nightPending.delete('seer');
-
     } else if (player.role === 'bodyguard') {
       if (!room.nightPending.has('bodyguard')) return;
       room.nightActions.bodyguard = targetId;
-      room.lastBodyguardTarget = targetId;
       room.nightPending.delete('bodyguard');
     }
 
@@ -386,26 +409,13 @@ io.on('connection', socket => {
     checkNightResolution(room);
   });
 
-  // ── Day actions ─────────────────────────────────────────────────────────────
-
-  socket.on('start-vote', () => {
-    const room = rooms[socket.roomCode];
-    if (!room || room.phase !== 'day') return;
-    const player = room.players.find(p => p.id === socket.id);
-    if (!player?.isHost) return;
-    room.phase = 'voting';
-    io.to(room.code).emit('vote-started');
-  });
+  // ── Day vote ─────────────────────────────────────────────────────────────────
 
   socket.on('vote', ({ targetId }) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.phase !== 'voting') return;
 
-    // In moderator mode, only moderator can open voting; players can't vote until 'voting' phase
-    if (room.moderatorMode && room.phase !== 'voting') return;
-    if (!room.moderatorMode && !['day', 'voting'].includes(room.phase)) return;
-
-    const player = room.players.find(p => p.id === socket.id && p.alive && p.role !== 'moderator');
+    const player = room.players.find(p => p.id === socket.id && p.alive);
     if (!player || room.votes[socket.id]) return;
 
     room.votes[socket.id] = targetId;
@@ -418,22 +428,43 @@ io.on('connection', socket => {
     });
 
     if (Object.keys(room.votes).length >= aliveCount) {
-      room.phase = 'resolving';
-      setTimeout(() => resolveVote(room), 1000);
+      room.phase = 'tallying';
+      setTimeout(() => startConfirmation(room), 1000);
     }
   });
 
-  // ── Hunter ──────────────────────────────────────────────────────────────────
+  // ── Confirmation ─────────────────────────────────────────────────────────────
+
+  socket.on('confirm-kill', ({ confirm }) => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.phase !== 'confirming') return;
+
+    const player = room.players.find(p => p.id === socket.id && p.alive);
+    if (!player || room.confirmVotes[socket.id] !== undefined) return;
+
+    room.confirmVotes[socket.id] = !!confirm;
+    const aliveCount = alivePlaying(room).length;
+    const yesCount   = Object.values(room.confirmVotes).filter(v => v).length;
+    const noCount    = Object.values(room.confirmVotes).filter(v => !v).length;
+    const voted      = Object.keys(room.confirmVotes).length;
+
+    io.to(room.code).emit('confirm-update', { yes: yesCount, no: noCount, voted, total: aliveCount });
+
+    if (voted >= aliveCount) {
+      clearTimeout(room.confirmTimer);
+      setTimeout(() => resolveConfirmation(room), 500);
+    }
+  });
+
+  // ── Hunter ───────────────────────────────────────────────────────────────────
 
   socket.on('hunter-shot', ({ targetId }) => {
     const room = rooms[socket.roomCode];
     if (!room || room.phase !== 'hunter-shooting') return;
-
     const hunter = room.players.find(p => p.id === socket.id && p.role === 'hunter');
     if (!hunter || !room.huntersPending?.has(socket.id)) return;
 
     room.huntersPending.delete(socket.id);
-
     let shotPlayer = null;
     if (targetId) {
       const t = room.players.find(p => p.id === targetId && p.alive);
@@ -445,12 +476,9 @@ io.on('connection', socket => {
       shotPlayer: shotPlayer ? { name: shotPlayer.name, role: shotPlayer.role } : null,
     });
 
-    // Chain if shot player is also a hunter
     if (shotPlayer?.role === 'hunter') {
       room.huntersPending.add(shotPlayer.id);
-      io.to(shotPlayer.id).emit('hunter-shoot', {
-        players: aliveSummary(room).filter(p => p.id !== shotPlayer.id),
-      });
+      io.to(shotPlayer.id).emit('hunter-shoot', { players: aliveSummary(room).filter(p => p.id !== shotPlayer.id) });
       io.to(room.code).emit('hunter-shooting', { names: [shotPlayer.name] });
       return;
     }
@@ -473,7 +501,7 @@ io.on('connection', socket => {
     if (room.players.length === 0) { delete rooms[socket.roomCode]; return; }
     if (room.phase === 'lobby') {
       if (wasHost) room.players[0].isHost = true;
-      io.to(room.code).emit('lobby-update', { players: room.players, moderatorMode: room.moderatorMode });
+      io.to(room.code).emit('lobby-update', { players: room.players });
     }
   });
 });
