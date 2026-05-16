@@ -155,6 +155,89 @@
       font-size: 11px;
       color: #333;
     }
+
+    /* ── Install banner ── */
+    #install-banner {
+      display: none;
+      width: 100%;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 16px;
+      background: #111;
+      border: 1.5px solid #2a2a2a;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    #install-banner:hover { border-color: #444; }
+    .install-icon { font-size: 26px; flex-shrink: 0; }
+    .install-text { flex: 1; }
+    .install-text-main { font-size: 14px; font-weight: bold; color: #ddd; }
+    .install-text-sub  { font-size: 12px; color: #555; margin-top: 2px; }
+    .install-btn {
+      font-size: 13px;
+      font-weight: bold;
+      padding: 7px 14px;
+      border-radius: 10px;
+      border: none;
+      background: #fff;
+      color: #000;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ── iOS instruction sheet ── */
+    #ios-sheet {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      z-index: 100;
+      justify-content: flex-end;
+      align-items: flex-end;
+    }
+    #ios-sheet.open { display: flex; }
+    .ios-sheet-box {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      background: #1a1a1a;
+      border-radius: 20px 20px 0 0;
+      padding: 20px 22px 36px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .ios-sheet-title { font-size: 17px; font-weight: bold; text-align: center; }
+    .ios-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #111;
+      border-radius: 12px;
+    }
+    .ios-step-num {
+      width: 26px; height: 26px;
+      background: #fff; color: #000;
+      border-radius: 50%;
+      font-size: 13px; font-weight: bold;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .ios-step-text { font-size: 14px; color: #ccc; line-height: 1.5; }
+    .ios-step-text b { color: #fff; }
+    .ios-close {
+      padding: 13px;
+      border-radius: 12px;
+      background: #2a2a2a;
+      border: none;
+      color: #fff;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -182,6 +265,36 @@
       </div>
       <div class="game-card-arrow">›</div>
     </button>
+
+    <!-- Install banner (shown when installable) -->
+    <div id="install-banner" onclick="triggerInstall()">
+      <div class="install-icon">📲</div>
+      <div class="install-text">
+        <div class="install-text-main">เพิ่มลงหน้าจอหลัก</div>
+        <div class="install-text-sub">เปิดเกมได้เลย ไม่ต้องผ่านเบราว์เซอร์</div>
+      </div>
+      <button class="install-btn" onclick="event.stopPropagation(); triggerInstall()">ติดตั้ง</button>
+    </div>
+  </div>
+
+  <!-- iOS instruction sheet -->
+  <div id="ios-sheet" onclick="closeIosSheet(event)">
+    <div class="ios-sheet-box">
+      <div class="ios-sheet-title">📲 เพิ่มลงหน้าจอหลัก</div>
+      <div class="ios-step">
+        <div class="ios-step-num">1</div>
+        <div class="ios-step-text">กดปุ่ม <b>แชร์</b> (□↑) ที่แถบเมนูด้านล่างของ Safari</div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">2</div>
+        <div class="ios-step-text">เลื่อนลงแล้วเลือก <b>"Add to Home Screen"</b><br><span style="color:#555;font-size:12px">(เพิ่มลงในหน้าจอโฮม)</span></div>
+      </div>
+      <div class="ios-step">
+        <div class="ios-step-num">3</div>
+        <div class="ios-step-text">กด <b>Add</b> มุมขวาบน — เสร็จแล้ว! 🎉</div>
+      </div>
+      <button class="ios-close" onclick="closeIosSheet()">ปิด</button>
+    </div>
   </div>
 
   <!-- หน้าเกมคำต้องห้าม -->
@@ -292,9 +405,60 @@
       }, 1000);
     }
 
-    // register service worker (optional but recommended)
+    // ── Service Worker ──────────────────────────────────────────────────────────
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js');
+    }
+
+    // ── PWA Install Prompt ───────────────────────────────────────────────────────
+    let deferredPrompt = null;
+    const banner = document.getElementById('install-banner');
+
+    // ถ้าเปิดอยู่ใน standalone (ติดตั้งแล้ว) → ไม่ต้องแสดง
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                      || window.navigator.standalone === true;
+
+    // ตรวจ iOS Safari
+    const isIos    = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isSafari = /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
+
+    if (!isStandalone) {
+      if (isIos && isSafari) {
+        // iOS ไม่ fire beforeinstallprompt → แสดง banner ด้วยคู่มือ manual
+        banner.style.display = 'flex';
+        banner.onclick = () => document.getElementById('ios-sheet').classList.add('open');
+        banner.querySelector('.install-btn').textContent = 'วิธีติดตั้ง';
+        banner.querySelector('.install-btn').onclick = (e) => {
+          e.stopPropagation();
+          document.getElementById('ios-sheet').classList.add('open');
+        };
+      } else {
+        // Android / Chrome / Edge — รอ event beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          banner.style.display = 'flex';
+        });
+
+        // ถ้า install สำเร็จ → ซ่อน banner
+        window.addEventListener('appinstalled', () => {
+          banner.style.display = 'none';
+          deferredPrompt = null;
+        });
+      }
+    }
+
+    function triggerInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+      }
+    }
+
+    function closeIosSheet(e) {
+      if (!e || e.target === document.getElementById('ios-sheet')) {
+        document.getElementById('ios-sheet').classList.remove('open');
+      }
     }
   </script>
 
