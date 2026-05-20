@@ -150,17 +150,18 @@ function startDay(room, eliminated) {
   const winner = checkWin(room);
   if (winner) { endGame(room, winner); return; }
 
+  const discSec = room.discussSec || DISCUSS_SEC;
   io.to(room.code).emit('day-start', {
     day: room.day,
     eliminated: eliminated.map(p => ({ id: p.id, name: p.name, role: p.role })),
     players: aliveSummary(room),
-    discussionSec: DISCUSS_SEC,
+    discussionSec: discSec,
   });
 
   // Auto-open voting after discussion timer
   room.discussionTimer = setTimeout(() => {
     if (room.phase === 'day') openVoting(room);
-  }, DISCUSS_SEC * 1000);
+  }, discSec * 1000);
 }
 
 function openVoting(room) {
@@ -285,11 +286,13 @@ function endGame(room, winner) {
 
 io.on('connection', socket => {
 
-  socket.on('create-room', ({ name }) => {
+  socket.on('create-room', ({ name, discussSec }) => {
     const code = genCode();
     const player = { id: socket.id, name: name.trim().slice(0, 15), role: null, alive: true, isHost: true };
+    const discSec = Math.max(10, Math.min(600, parseInt(discussSec) || DISCUSS_SEC));
     rooms[code] = {
       code, players: [player], phase: 'lobby', day: 0,
+      discussSec: discSec,
       nightActions: {}, wolfVotes: {}, nightPending: new Set(),
       votes: {}, confirmVotes: {}, proposedTarget: null,
       witchUsedSave: false, witchUsedKill: false, witchWaiting: false,
