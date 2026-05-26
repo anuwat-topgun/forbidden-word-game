@@ -10,6 +10,63 @@ app.use(express.static(path.join(__dirname)));
 
 const rooms = {};
 
+const spyRooms = {};
+
+const SPY_LOCATIONS = [
+  { name: '✈️ สนามบิน',        roles: ['นักบิน','แอร์โฮสเตส','ผู้โดยสาร','เจ้าหน้าที่ศุลกากร','พนักงานเช็คอิน','รปภ.'] },
+  { name: '🍽️ ร้านอาหาร',     roles: ['เชฟ','บริกร','ลูกค้า','เจ้าของร้าน','พนักงานเสิร์ฟ','บาร์เทนเดอร์'] },
+  { name: '🏥 โรงพยาบาล',      roles: ['แพทย์','พยาบาล','คนไข้','ผู้มาเยี่ยม','เภสัชกร','พนักงานต้อนรับ'] },
+  { name: '🏫 โรงเรียน',       roles: ['ครู','นักเรียน','ผู้อำนวยการ','ภารโรง','นักการ','ผู้ปกครอง'] },
+  { name: '🏖️ ชายหาด',        roles: ['นักท่องเที่ยว','ไลฟ์การ์ด','คนขายของ','นักดำน้ำ','ช่างภาพ','พนักงานรีสอร์ท'] },
+  { name: '🎬 โรงภาพยนตร์',    roles: ['ผู้ชม','คนขายตั๋ว','พนักงานป๊อปคอร์น','ผู้กำกับ','นักแสดง','พนักงานทำความสะอาด'] },
+  { name: '🛒 ซูเปอร์มาร์เก็ต', roles: ['แคชเชียร์','ลูกค้า','พนักงานสต็อก','เจ้าของ','นักขาย','รปภ.'] },
+  { name: '🚔 สถานีตำรวจ',      roles: ['ตำรวจ','นักสืบ','ผู้ต้องหา','ทนายความ','พยาน','เจ้าหน้าที่ธุรการ'] },
+  { name: '🦁 สวนสัตว์',       roles: ['ผู้เยี่ยมชม','ผู้ดูแลสัตว์','ไกด์นำเที่ยว','ช่างภาพ','สัตวแพทย์','พนักงานขายตั๋ว'] },
+  { name: '💪 ยิม',            roles: ['เทรนเนอร์','สมาชิก','พนักงานต้อนรับ','นักกีฬา','ผู้จัดการ','นักโภชนาการ'] },
+  { name: '🎵 คอนเสิร์ต',      roles: ['นักร้อง','แฟนคลับ','รปภ.','ช่างเสียง','ช่างภาพ','พิธีกร'] },
+  { name: '🛕 วัด',            roles: ['พระสงฆ์','นักท่องเที่ยว','คนมาทำบุญ','มัคนายก','เจ้าอาวาส','ช่างภาพ'] },
+  { name: '🏦 ธนาคาร',         roles: ['พนักงานธนาคาร','ลูกค้า','รปภ.','ผู้จัดการ','นักบัญชี','ผู้ตรวจสอบ'] },
+  { name: '🏟️ สนามกีฬา',      roles: ['นักกีฬา','แฟนบอล','ผู้ตัดสิน','ผู้บรรยาย','พนักงานขายน้ำ','โค้ช'] },
+  { name: '💆 สปา',            roles: ['นักนวด','ลูกค้า','พนักงานต้อนรับ','ผู้จัดการ','นักอโรมา','พนักงานทำผม'] },
+  { name: '🚢 เรือสำราญ',      roles: ['กัปตัน','ผู้โดยสาร','พนักงานบริการ','นักดนตรี','พ่อครัว','แพทย์ประจำเรือ'] },
+  { name: '🎡 สวนสนุก',        roles: ['ผู้เยี่ยมชม','พนักงานเครื่องเล่น','มาสคอต','พนักงานขายอาหาร','ช่างซ่อม','ผู้จัดการ'] },
+  { name: '🏛️ พิพิธภัณฑ์',    roles: ['ไกด์นำเที่ยว','นักท่องเที่ยว','ภัณฑารักษ์','นักประวัติศาสตร์','ช่างภาพ','นักศึกษา'] },
+  { name: '🏕️ ค่ายพักแรม',    roles: ['หัวหน้าค่าย','นักเดินป่า','ครู','นักเรียน','ช่างภาพ','แพทย์'] },
+  { name: '🎭 โรงละคร',        roles: ['นักแสดง','ผู้กำกับ','ผู้ชม','ช่างแสง','ช่างเสียง','พนักงานขายตั๋ว'] },
+];
+
+function genSpyCode() {
+  let c;
+  do { c = Math.random().toString(36).slice(2, 6).toUpperCase(); } while (spyRooms[c] || rooms[c]);
+  return c;
+}
+
+function startSpyVote(room) {
+  room.phase = 'voting';
+  room.votes = {};
+  io.to('spy:' + room.code).emit('spy:vote-start', { players: room.players });
+}
+
+function resolveSpyVote(room) {
+  const tally = {};
+  Object.values(room.votes).forEach(id => { tally[id] = (tally[id] || 0) + 1; });
+  let maxVotes = 0, topId = null;
+  Object.entries(tally).forEach(([id, cnt]) => { if (cnt > maxVotes) { maxVotes = cnt; topId = id; } });
+  const caught = topId === room.spyId;
+  if (caught) {
+    room.phase = 'spy-guess';
+    const spyName = room.players.find(p => p.id === room.spyId)?.name;
+    io.to('spy:' + room.code).emit('spy:caught', { spyId: room.spyId, spyName, locations: SPY_LOCATIONS.map(l => l.name) });
+  } else {
+    room.phase = 'gameover';
+    const wrongName = room.players.find(p => p.id === topId)?.name || '?';
+    io.to('spy:' + room.code).emit('spy:gameover', {
+      winner: 'spy', spyId: room.spyId, location: room.location.name,
+      reason: `โหวตจับ "${wrongName}" ผิดคน — สายลับชนะ!`, players: room.players,
+    });
+  }
+}
+
 const DISCUSS_SEC = 90; // discussion time before voting opens
 const CONFIRM_SEC = 30; // confirmation time after vote tallied
 
@@ -494,17 +551,122 @@ io.on('connection', socket => {
     }
   });
 
+  // ── SPYFALL ──────────────────────────────────────────────────────────────────
+
+  socket.on('spy:create', ({ name, gameSec }) => {
+    const code = genSpyCode();
+    const player = { id: socket.id, name: name.trim().slice(0, 15), isHost: true };
+    const sec = Math.max(60, Math.min(600, parseInt(gameSec) || 300));
+    spyRooms[code] = { code, players: [player], phase: 'lobby', gameSec: sec, location: null, spyId: null, votes: {}, gameTimer: null };
+    socket.join('spy:' + code);
+    socket.spyCode = code;
+    socket.emit('spy:created', { code, playerId: socket.id, players: [player] });
+  });
+
+  socket.on('spy:join', ({ name, code }) => {
+    const room = spyRooms[code?.toUpperCase()];
+    if (!room)                   return socket.emit('spy:error', '❌ ไม่พบห้องนี้');
+    if (room.phase !== 'lobby')  return socket.emit('spy:error', '❌ เกมเริ่มแล้ว');
+    if (room.players.length >= 10) return socket.emit('spy:error', '❌ ห้องเต็ม (สูงสุด 10 คน)');
+    const player = { id: socket.id, name: name.trim().slice(0, 15), isHost: false };
+    room.players.push(player);
+    socket.join('spy:' + code.toUpperCase());
+    socket.spyCode = code.toUpperCase();
+    socket.emit('spy:joined', { code: room.code, playerId: socket.id, players: room.players });
+    io.to('spy:' + room.code).emit('spy:lobby-update', { players: room.players });
+  });
+
+  socket.on('spy:start', () => {
+    const room = spyRooms[socket.spyCode];
+    if (!room || room.phase !== 'lobby') return;
+    if (!room.players.find(p => p.id === socket.id && p.isHost)) return;
+    if (room.players.length < 3) return socket.emit('spy:error', '❌ ต้องการผู้เล่นอย่างน้อย 3 คน');
+    const loc = SPY_LOCATIONS[Math.floor(Math.random() * SPY_LOCATIONS.length)];
+    room.location = loc;
+    const spyIdx = Math.floor(Math.random() * room.players.length);
+    room.spyId = room.players[spyIdx].id;
+    const roles = [...loc.roles].sort(() => Math.random() - 0.5);
+    room.phase = 'game';
+    room.votes = {};
+    const locationNames = SPY_LOCATIONS.map(l => l.name);
+    room.players.forEach((p, i) => {
+      const sock = io.sockets.sockets.get(p.id);
+      if (!sock) return;
+      if (p.id === room.spyId) {
+        sock.emit('spy:game-start', { isSpy: true, location: null, role: null, gameSec: room.gameSec, locations: locationNames });
+      } else {
+        sock.emit('spy:game-start', { isSpy: false, location: loc.name, role: roles[i % roles.length], gameSec: room.gameSec, locations: locationNames });
+      }
+    });
+    io.to('spy:' + room.code).emit('spy:players', { players: room.players });
+    room.gameTimer = setTimeout(() => { if (room.phase === 'game') startSpyVote(room); }, room.gameSec * 1000);
+  });
+
+  socket.on('spy:declare', ({ location }) => {
+    const room = spyRooms[socket.spyCode];
+    if (!room || room.phase !== 'game' || socket.id !== room.spyId) return;
+    clearTimeout(room.gameTimer);
+    const correct = room.location.name === location;
+    room.phase = 'gameover';
+    io.to('spy:' + room.code).emit('spy:gameover', {
+      winner: correct ? 'spy' : 'village', spyId: room.spyId, location: room.location.name,
+      reason: correct ? '🕵️ สายลับเดาสถานที่ถูกต้อง!' : '🎉 สายลับเดาสถานที่ผิด ชาวเมืองชนะ!',
+      players: room.players,
+    });
+  });
+
+  socket.on('spy:call-vote', () => {
+    const room = spyRooms[socket.spyCode];
+    if (!room || room.phase !== 'game') return;
+    clearTimeout(room.gameTimer);
+    startSpyVote(room);
+  });
+
+  socket.on('spy:vote', ({ targetId }) => {
+    const room = spyRooms[socket.spyCode];
+    if (!room || room.phase !== 'voting') return;
+    if (room.votes[socket.id]) return;
+    room.votes[socket.id] = targetId;
+    io.to('spy:' + room.code).emit('spy:vote-update', { count: Object.keys(room.votes).length, total: room.players.length });
+    if (Object.keys(room.votes).length >= room.players.length) resolveSpyVote(room);
+  });
+
+  socket.on('spy:location-guess', ({ location }) => {
+    const room = spyRooms[socket.spyCode];
+    if (!room || room.phase !== 'spy-guess' || socket.id !== room.spyId) return;
+    const correct = room.location.name === location;
+    room.phase = 'gameover';
+    io.to('spy:' + room.code).emit('spy:gameover', {
+      winner: correct ? 'spy' : 'village', spyId: room.spyId, location: room.location.name,
+      reason: correct ? '🕵️ สายลับถูกจับแต่เดาสถานที่ถูก — สายลับชนะ!' : '🎉 ชาวเมืองชนะ! สายลับถูกจับและเดาสถานที่ผิด!',
+      players: room.players,
+    });
+  });
+
   // ── Disconnect ───────────────────────────────────────────────────────────────
 
   socket.on('disconnect', () => {
+    // Werewolf cleanup
     const room = rooms[socket.roomCode];
-    if (!room) return;
-    const wasHost = room.players.find(p => p.id === socket.id && p.isHost);
-    room.players = room.players.filter(p => p.id !== socket.id);
-    if (room.players.length === 0) { delete rooms[socket.roomCode]; return; }
-    if (room.phase === 'lobby') {
-      if (wasHost) room.players[0].isHost = true;
-      io.to(room.code).emit('lobby-update', { players: room.players });
+    if (room) {
+      const wasHost = room.players.find(p => p.id === socket.id && p.isHost);
+      room.players = room.players.filter(p => p.id !== socket.id);
+      if (room.players.length === 0) { delete rooms[socket.roomCode]; }
+      else if (room.phase === 'lobby') {
+        if (wasHost) room.players[0].isHost = true;
+        io.to(room.code).emit('lobby-update', { players: room.players });
+      }
+    }
+    // Spyfall cleanup
+    const spyRoom = spyRooms[socket.spyCode];
+    if (spyRoom && spyRoom.phase === 'lobby') {
+      const wasHost = spyRoom.players.find(p => p.id === socket.id && p.isHost);
+      spyRoom.players = spyRoom.players.filter(p => p.id !== socket.id);
+      if (spyRoom.players.length === 0) { delete spyRooms[socket.spyCode]; }
+      else {
+        if (wasHost) spyRoom.players[0].isHost = true;
+        io.to('spy:' + spyRoom.code).emit('spy:lobby-update', { players: spyRoom.players });
+      }
     }
   });
 });

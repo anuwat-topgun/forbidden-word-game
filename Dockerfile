@@ -19,7 +19,7 @@ ENV PORT=3000
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=deps --chown=appuser:appgroup /app/node_modules ./node_modules
-COPY --chown=appuser:appgroup package.json server.js index.html werewolf.html manifest.json sw.js icon.png ./
+COPY --chown=appuser:appgroup package.json server.js index.html werewolf.html spyfall.html manifest.json sw.js icon.png ./
 
 USER appuser
 

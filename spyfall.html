@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>🕵️ Spyfall</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #0d0d0d; color: #fff; min-height: 100vh; display: flex; justify-content: center; }
+
+    .screen { display: none; width: 100%; max-width: 480px; min-height: 100vh; flex-direction: column; padding: 20px 18px env(safe-area-inset-bottom,20px); gap: 12px; }
+    .screen.active { display: flex; }
+
+    h2 { font-size: 24px; text-align: center; }
+    h3 { font-size: 17px; color: #bbb; }
+
+    input[type=text], input[type=number] {
+      width: 100%; padding: 13px 15px; font-size: 17px;
+      border: 2px solid #2a2a2a; border-radius: 12px;
+      background: #161616; color: #fff; outline: none; transition: border-color .2s;
+    }
+    input[type=text]:focus, input[type=number]:focus { border-color: #555; }
+
+    .btn { width: 100%; padding: 15px; font-size: 17px; font-weight: bold; border: 2px solid #fff; border-radius: 13px; background: transparent; color: #fff; cursor: pointer; transition: background .15s, color .15s; }
+    .btn:active:not(:disabled) { background: #fff; color: #000; }
+    .btn.primary { background: #fff; color: #000; }
+    .btn.primary:active { background: #ccc; }
+    .btn.red    { border-color: #e74c3c; color: #e74c3c; background: transparent; }
+    .btn.red:active { background: #e74c3c; color: #fff; }
+    .btn.green  { border-color: #27ae60; color: #27ae60; background: transparent; }
+    .btn.green:active { background: #27ae60; color: #fff; }
+    .btn.muted  { border-color: #333; color: #555; font-size: 14px; }
+    .btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    .err { color: #e74c3c; text-align: center; font-size: 14px; min-height: 16px; }
+
+    /* lobby */
+    .room-code { display: inline-block; font-size: 42px; font-weight: bold; letter-spacing: 10px; color: #f1c40f; border: 3px solid #f1c40f; border-radius: 14px; padding: 10px 20px; cursor: pointer; }
+    .room-code-wrap { text-align: center; }
+    .copy-hint { color: #555; font-size: 11px; margin-top: 4px; }
+    .sec-title { color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+    .player-row { padding: 11px 14px; background: #161616; border-radius: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 15px; }
+    .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: #222; color: #777; }
+
+    /* preset buttons */
+    .disc-preset {
+      flex: 1; padding: 9px 4px; font-size: 13px; font-weight: bold;
+      border: 2px solid #2a2a2a; border-radius: 10px;
+      background: #161616; color: #666; cursor: pointer; transition: all .15s;
+    }
+    .disc-preset.active { border-color: #f1c40f; color: #f1c40f; background: #1a1500; }
+    .disc-preset:active  { border-color: #555; }
+
+    /* timer bar */
+    .timer-bar-wrap { background: #181818; border-radius: 6px; overflow: hidden; height: 8px; }
+    .timer-bar { height: 100%; background: #27ae60; transition: width .5s linear, background .5s; border-radius: 6px; }
+    .timer-digits-row { display: flex; justify-content: center; align-items: center; }
+    .timer-digits { font-size: 32px; font-weight: bold; color: #f1c40f; letter-spacing: 2px; }
+
+    /* location card */
+    .location-card { text-align: center; padding: 22px 18px; border: 2px solid #2a2a2a; border-radius: 18px; background: #111; }
+    .location-emoji { font-size: 64px; }
+    .location-name  { font-size: 26px; font-weight: bold; margin: 10px 0 6px; }
+    .role-badge { display: inline-block; font-size: 14px; font-weight: bold; padding: 5px 16px; border-radius: 20px; background: #1a1500; color: #f1c40f; border: 1.5px solid #f1c40f; margin-top: 6px; }
+
+    /* spy card */
+    .spy-card { text-align: center; padding: 22px 18px; border: 2px solid #e74c3c; border-radius: 18px; background: #130000; }
+    .spy-emoji { font-size: 64px; }
+    .spy-title { font-size: 26px; font-weight: bold; color: #ff7070; margin: 10px 0 6px; }
+    .spy-hint  { color: #aa5555; font-size: 14px; line-height: 1.6; }
+
+    /* location chips */
+    .loc-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .loc-chip { font-size: 12px; padding: 5px 10px; border-radius: 20px; background: #161616; border: 1.5px solid #2a2a2a; color: #888; cursor: default; white-space: nowrap; }
+    .loc-chip.highlight { border-color: #f1c40f; color: #f1c40f; background: #1a1500; }
+
+    /* vote */
+    .act-list { display: flex; flex-direction: column; gap: 9px; }
+    .act-btn { padding: 13px 14px; background: #161616; border: 2px solid #2a2a2a; border-radius: 12px; color: #fff; font-size: 15px; cursor: pointer; text-align: left; width: 100%; transition: border-color .15s; }
+    .act-btn:active:not(:disabled) { border-color: #666; }
+    .act-btn.voted   { border-color: #27ae60; background: #071510; }
+    .act-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+    /* progress bar */
+    .vbar-wrap { background: #181818; border-radius: 6px; overflow: hidden; height: 5px; }
+    .vbar      { height: 100%; background: #27ae60; transition: width .3s; border-radius: 6px; }
+    .vbar-label { text-align: center; color: #555; font-size: 13px; }
+
+    /* gameover */
+    .go-banner { text-align: center; padding: 22px; border-radius: 16px; font-size: 24px; font-weight: bold; }
+    .go-banner.spy     { background: #130000; border: 3px solid #e74c3c; }
+    .go-banner.village { background: #071510; border: 3px solid #27ae60; }
+    .go-result { padding: 11px 14px; background: #111; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+
+    /* info boxes */
+    .info-box { border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+    .info-box.yellow { background: #141000; border: 2px solid #f1c40f; color: #f0d060; }
+    .info-box.red    { background: #150000; border: 2px solid #e74c3c; color: #ff9090; }
+    .info-box.green  { background: #071510; border: 2px solid #27ae60; color: #82e0aa; }
+
+    /* countdown big number */
+    .countdown-big { font-size: 80px; font-weight: bold; text-align: center; color: #f1c40f; line-height: 1; }
+    .count-sub  { text-align: center; color: #444; font-size: 13px; margin-top: 3px; }
+
+    /* reveal */
+    .reveal-card { text-align: center; padding: 26px 18px; border: 2px solid #2a2a2a; border-radius: 18px; background: #111; }
+
+    .spacer { flex: 1; }
+
+    /* Location picker overlay */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 200; justify-content: flex-end; flex-direction: column; }
+    .overlay.open { display: flex; }
+    .overlay-box { background: #161616; border-radius: 20px 20px 0 0; padding: 20px 18px env(safe-area-inset-bottom,20px); max-height: 80vh; display: flex; flex-direction: column; gap: 12px; }
+    .overlay-title { font-size: 17px; font-weight: bold; text-align: center; color: #fff; }
+    .overlay-scroll { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+    .overlay-loc-btn { padding: 13px 14px; background: #111; border: 2px solid #2a2a2a; border-radius: 12px; color: #fff; font-size: 15px; cursor: pointer; text-align: left; width: 100%; transition: border-color .15s; }
+    .overlay-loc-btn:active { border-color: #666; }
+    .overlay-loc-btn.selected { border-color: #f1c40f; background: #1a1500; color: #f1c40f; }
+    .overlay-btns { display: flex; gap: 10px; }
+    .overlay-btns .btn { padding: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- ══ HOME ══ -->
+<div id="s-home" class="screen active">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px">
+    <div style="text-align:center">
+      <div style="font-size:72px">🕵️</div>
+      <div style="font-size:30px;font-weight:bold;margin-top:8px">Spyfall</div>
+      <div style="color:#444;font-size:13px;margin-top:4px">3–10 ผู้เล่น</div>
+    </div>
+    <button class="btn primary" onclick="homeStep('create')">🏠 สร้างห้อง</button>
+    <button class="btn"         onclick="homeStep('join')">🚪 เข้าร่วมห้อง</button>
+  </div>
+  <button class="btn muted" onclick="location.href='/'">← กลับหน้าหลัก</button>
+</div>
+
+<!-- ══ CREATE ══ -->
+<div id="s-create" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px">
+    <div style="text-align:center">
+      <div style="font-size:48px">🏠</div>
+      <div style="font-size:22px;font-weight:bold;margin-top:8px">สร้างห้อง</div>
+    </div>
+    <input id="create-name" type="text" placeholder="ชื่อของคุณ" maxlength="15" autocomplete="off"
+      onkeydown="if(event.key==='Enter') createRoom()">
+
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:13px;color:#555">⏱ เวลาเกม</div>
+      <div style="display:flex;gap:8px">
+        <button class="disc-preset" data-sec="300" onclick="setTimePreset(this)">5 นาที</button>
+        <button class="disc-preset active" data-sec="360" onclick="setTimePreset(this)">6 นาที</button>
+        <button class="disc-preset" data-sec="420" onclick="setTimePreset(this)">7 นาที</button>
+        <button class="disc-preset" data-sec="480" onclick="setTimePreset(this)">8 นาที</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input id="create-gamesec" type="number" value="360" min="60" max="600"
+          style="width:80px;padding:10px 12px;font-size:17px;text-align:center;
+                 border:2px solid #2a2a2a;border-radius:10px;background:#161616;color:#fff;outline:none"
+          oninput="syncTimePreset(this.value)">
+        <span style="font-size:14px;color:#555">วินาที</span>
+        <span id="time-preview" style="font-size:13px;color:#f1c40f;margin-left:auto">= 6:00</span>
+      </div>
+    </div>
+
+    <button class="btn primary" onclick="createRoom()">สร้างห้อง</button>
+    <div id="create-err" class="err"></div>
+  </div>
+  <button class="btn muted" onclick="homeStep(null)">← ย้อนกลับ</button>
+</div>
+
+<!-- ══ JOIN ══ -->
+<div id="s-join" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px">
+    <div style="text-align:center">
+      <div style="font-size:48px">🚪</div>
+      <div style="font-size:22px;font-weight:bold;margin-top:8px">เข้าร่วมห้อง</div>
+    </div>
+    <input id="join-name" type="text" placeholder="ชื่อของคุณ" maxlength="15" autocomplete="off">
+    <input id="join-code" type="text" placeholder="รหัสห้อง 4 ตัว" maxlength="4"
+      style="text-transform:uppercase;letter-spacing:8px;text-align:center;font-size:22px"
+      autocomplete="off" onkeydown="if(event.key==='Enter') joinRoom()">
+    <button class="btn primary" onclick="joinRoom()">เข้าร่วม</button>
+    <div id="join-err" class="err"></div>
+  </div>
+  <button class="btn muted" onclick="homeStep(null)">← ย้อนกลับ</button>
+</div>
+
+<!-- ══ LOBBY ══ -->
+<div id="s-lobby" class="screen">
+  <div class="room-code-wrap">
+    <div class="sec-title">รหัสห้อง — แชร์ให้เพื่อน</div>
+    <div class="room-code" id="lob-code" onclick="copyCode()">----</div>
+    <div class="copy-hint">แตะเพื่อคัดลอก</div>
+  </div>
+  <div class="sec-title">ผู้เล่น <span id="lob-cnt">0</span> คน</div>
+  <div id="lob-players" style="display:flex;flex-direction:column;gap:8px"></div>
+  <div id="lob-warn" class="err" style="display:none">ต้องการผู้เล่นอย่างน้อย 3 คน</div>
+  <div class="spacer"></div>
+  <button id="btn-start" class="btn primary" style="display:none" onclick="startGame()">▶ เริ่มเกม</button>
+  <div id="lob-wait" style="display:none;text-align:center;color:#444;font-size:14px">รอโฮสต์เริ่มเกม...</div>
+</div>
+
+<!-- ══ REVEAL (10 second countdown) ══ -->
+<div id="s-reveal" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:16px">
+    <h2>บทบาทของคุณ</h2>
+    <div id="rev-card" class="reveal-card">
+      <!-- filled by JS -->
+    </div>
+    <div class="countdown-big" id="rev-count">10</div>
+    <div class="count-sub">วินาที ก่อนเกมเริ่ม</div>
+  </div>
+</div>
+
+<!-- ══ GAME ══ -->
+<div id="s-game" class="screen">
+  <!-- Timer bar -->
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div class="timer-bar-wrap">
+      <div class="timer-bar" id="game-bar" style="width:100%"></div>
+    </div>
+    <div class="timer-digits-row">
+      <div class="timer-digits" id="game-digits">0:00</div>
+    </div>
+  </div>
+
+  <!-- Role card -->
+  <div id="game-card">
+    <!-- filled by JS -->
+  </div>
+
+  <!-- Location list chips -->
+  <div style="font-size:12px;color:#555;margin-bottom:2px">สถานที่ทั้งหมด</div>
+  <div id="game-locs" class="loc-chips"></div>
+
+  <div class="spacer"></div>
+
+  <!-- Buttons -->
+  <div id="spy-declare-wrap" style="display:none">
+    <button class="btn primary" onclick="openDeclarePicker()">🎯 ประกาศสถานที่</button>
+  </div>
+  <button class="btn red" id="btn-call-vote" onclick="callVote()">🗳️ โหวตจับสปาย</button>
+</div>
+
+<!-- ══ VOTE ══ -->
+<div id="s-vote" class="screen">
+  <h2>🗳️ โหวต</h2>
+  <div style="text-align:center;color:#888;font-size:14px">ใครคือสายลับ?</div>
+  <div class="vbar-label">โหวตแล้ว <span id="v-count">0</span>/<span id="v-total">0</span> คน</div>
+  <div class="vbar-wrap"><div class="vbar" id="v-bar" style="width:0%"></div></div>
+  <div id="vote-list" class="act-list"></div>
+  <div id="vote-wait" style="display:none;text-align:center;color:#555;font-size:14px;padding:12px 0">รอผลการโหวต...</div>
+</div>
+
+<!-- ══ SPY GUESS ══ -->
+<div id="s-spy-guess" class="screen">
+  <div class="info-box red" style="text-align:center;padding:16px">
+    <div style="font-size:32px;margin-bottom:6px">🎯</div>
+    <div style="font-weight:bold;font-size:17px">สายลับถูกจับ!</div>
+    <div style="font-size:13px;margin-top:4px">เดาสถานที่เพื่อชนะ</div>
+  </div>
+  <div id="spy-guess-list" class="act-list" style="display:none"></div>
+  <div id="spy-guess-wait" style="display:none;text-align:center;color:#555;font-size:14px;padding:20px 0">รอสายลับเดาสถานที่...</div>
+</div>
+
+<!-- ══ GAME OVER ══ -->
+<div id="s-gameover" class="screen">
+  <div id="go-banner" class="go-banner">—</div>
+  <div id="go-reason" style="text-align:center;font-size:15px;color:#888;margin:-4px 0 4px;line-height:1.5"></div>
+  <div class="info-box yellow" style="text-align:center;padding:14px">
+    <div style="font-size:12px;color:#888;margin-bottom:4px">สายลับคือ</div>
+    <div id="go-spy" style="font-size:20px;font-weight:bold"></div>
+  </div>
+  <div class="info-box" style="text-align:center;padding:14px;background:#141000;border:2px solid #f1c40f">
+    <div style="font-size:12px;color:#888;margin-bottom:4px">สถานที่</div>
+    <div id="go-location" style="font-size:18px;font-weight:bold;color:#f1c40f"></div>
+  </div>
+  <div class="sec-title">ผู้เล่น</div>
+  <div id="go-players" style="display:flex;flex-direction:column;gap:7px"></div>
+  <div class="spacer"></div>
+  <button class="btn primary" onclick="location.href='/spyfall.html'">เล่นอีกครั้ง</button>
+  <button class="btn muted"   onclick="location.href='/'">กลับหน้าหลัก</button>
+</div>
+
+<!-- ══ LOCATION PICKER OVERLAY ══ -->
+<div id="declare-overlay" class="overlay">
+  <div class="overlay-box">
+    <div class="overlay-title">🎯 เลือกสถานที่</div>
+    <div class="overlay-scroll" id="overlay-loc-list"></div>
+    <div class="overlay-btns">
+      <button class="btn primary" onclick="confirmDeclare()">ยืนยัน</button>
+      <button class="btn muted"   onclick="closeDeclareOverlay()">ยกเลิก</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const _srv = (() => {
+    const p = new URLSearchParams(location.search).get('server');
+    return p || window.SOCKET_SERVER || location.origin;
+  })();
+</script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io(_srv, { transports: ['websocket', 'polling'] });
+
+  let myId = null, myName = '', isHost = false, isSpy = false;
+  let roomCode = '';
+  let myLocation = null, myRole = null;
+  let allLocations = [];
+  let allPlayers = [];
+  let gameSec = 0, gameEndTime = 0;
+  let gameTimerInterval = null, revTimer = null;
+  let hasVoted = false;
+  let declareSelected = null;
+
+  // ── Utilities ─────────────────────────────────────────────────────────────────
+  function fmtTime(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────────
+  function homeStep(mode) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    if (mode === 'create') {
+      document.getElementById('s-create').classList.add('active');
+      setTimeout(() => document.getElementById('create-name').focus(), 50);
+    } else if (mode === 'join') {
+      document.getElementById('s-join').classList.add('active');
+      setTimeout(() => document.getElementById('join-name').focus(), 50);
+    } else {
+      document.getElementById('s-home').classList.add('active');
+    }
+  }
+
+  // ── Timer presets ─────────────────────────────────────────────────────────────
+  function setTimePreset(btn) {
+    document.querySelectorAll('.disc-preset').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const sec = parseInt(btn.dataset.sec);
+    document.getElementById('create-gamesec').value = sec;
+    document.getElementById('time-preview').textContent = '= ' + fmtTime(sec);
+  }
+  function syncTimePreset(val) {
+    const sec = parseInt(val) || 0;
+    document.getElementById('time-preview').textContent = sec > 0 ? '= ' + fmtTime(sec) : '';
+    document.querySelectorAll('.disc-preset').forEach(b => {
+      b.classList.toggle('active', parseInt(b.dataset.sec) === sec);
+    });
+  }
+
+  // ── Room actions ──────────────────────────────────────────────────────────────
+  function createRoom() {
+    const name = document.getElementById('create-name').value.trim();
+    if (!name) { document.getElementById('create-err').textContent = 'กรุณาใส่ชื่อ'; return; }
+    const gameSec = Math.max(60, Math.min(600, parseInt(document.getElementById('create-gamesec').value) || 360));
+    document.getElementById('create-err').textContent = '';
+    myName = name;
+    socket.emit('spy:create', { name, gameSec });
+  }
+
+  function joinRoom() {
+    const name = document.getElementById('join-name').value.trim();
+    const code = document.getElementById('join-code').value.trim().toUpperCase();
+    if (!name) { document.getElementById('join-err').textContent = 'กรุณาใส่ชื่อ'; return; }
+    if (code.length !== 4) { document.getElementById('join-err').textContent = 'กรุณาใส่รหัสห้อง 4 ตัวอักษร'; return; }
+    document.getElementById('join-err').textContent = '';
+    myName = name;
+    socket.emit('spy:join', { name, code });
+  }
+
+  function copyCode() {
+    navigator.clipboard?.writeText(roomCode).catch(() => {});
+    const el = document.getElementById('lob-code'), t = el.textContent;
+    el.textContent = '✓ คัดลอก';
+    setTimeout(() => el.textContent = t, 1500);
+  }
+
+  function startGame() { socket.emit('spy:start'); }
+
+  function renderLobby(players) {
+    document.getElementById('lob-code').textContent = roomCode;
+    document.getElementById('lob-cnt').textContent  = players.length;
+    document.getElementById('lob-players').innerHTML = players.map(p =>
+      `<div class="player-row">
+        <span>${p.isHost ? '👑 ' : ''}${p.name}</span>
+        ${p.id === myId ? '<span class="badge">คุณ</span>' : ''}
+      </div>`
+    ).join('');
+    const enough = players.length >= 3;
+    document.getElementById('lob-warn').style.display  = enough ? 'none' : 'block';
+    document.getElementById('btn-start').style.display = isHost ? 'block' : 'none';
+    document.getElementById('btn-start').disabled      = !enough;
+    document.getElementById('lob-wait').style.display  = isHost ? 'none' : 'block';
+  }
+
+  // ── Reveal screen ─────────────────────────────────────────────────────────────
+  function showReveal(isSpy_, location, role) {
+    const card = document.getElementById('rev-card');
+    if (isSpy_) {
+      card.innerHTML = `
+        <div style="font-size:64px">🕵️</div>
+        <div style="font-size:24px;font-weight:bold;color:#ff7070;margin:10px 0 6px">สายลับ</div>
+        <div style="color:#aa5555;font-size:14px;line-height:1.6">คุณไม่รู้ว่าทุกคนอยู่ที่ไหน<br>ฟังคำใบ้แล้วเดาสถานที่ให้ถูก</div>`;
+    } else {
+      const emoji = location.split(' ')[0];
+      const locName = location.split(' ').slice(1).join(' ');
+      card.innerHTML = `
+        <div style="font-size:64px">${emoji}</div>
+        <div style="font-size:24px;font-weight:bold;margin:10px 0 4px">${locName}</div>
+        <div style="margin-top:6px"><span class="role-badge">บทบาท: ${role}</span></div>`;
+    }
+
+    let c = 10;
+    clearInterval(revTimer);
+    document.getElementById('rev-count').textContent = c;
+    revTimer = setInterval(() => {
+      c--;
+      document.getElementById('rev-count').textContent = c;
+      if (c <= 0) { clearInterval(revTimer); }
+    }, 1000);
+    show('s-reveal');
+  }
+
+  // ── Game screen ───────────────────────────────────────────────────────────────
+  function showGame(isSpy_, location, role, sec, locations) {
+    gameSec = sec;
+    gameEndTime = Date.now() + sec * 1000;
+    allLocations = locations;
+
+    // Render card
+    const card = document.getElementById('game-card');
+    if (isSpy_) {
+      card.innerHTML = `
+        <div class="spy-card">
+          <div class="spy-emoji">🕵️</div>
+          <div class="spy-title">สายลับ</div>
+          <div class="spy-hint">ฟังคำใบ้แล้วเดาสถานที่<br>อย่าให้คนอื่นจับได้!</div>
+        </div>`;
+    } else {
+      const emoji = location.split(' ')[0];
+      const locName = location.split(' ').slice(1).join(' ');
+      card.innerHTML = `
+        <div class="location-card">
+          <div class="location-emoji">${emoji}</div>
+          <div class="location-name">${locName}</div>
+          <div><span class="role-badge">บทบาท: ${role}</span></div>
+        </div>`;
+    }
+
+    // Render location chips
+    const chipsEl = document.getElementById('game-locs');
+    chipsEl.innerHTML = locations.map(loc => {
+      const isMyLoc = !isSpy_ && loc === location;
+      return `<div class="loc-chip${isMyLoc ? ' highlight' : ''}">${loc}</div>`;
+    }).join('');
+
+    // Show/hide spy declare button
+    document.getElementById('spy-declare-wrap').style.display = isSpy_ ? 'block' : 'none';
+
+    // Start timer
+    startGameTimer(sec);
+    show('s-game');
+  }
+
+  function startGameTimer(totalSec) {
+    clearInterval(gameTimerInterval);
+    const bar   = document.getElementById('game-bar');
+    const digits = document.getElementById('game-digits');
+
+    function tick() {
+      const remaining = Math.max(0, Math.ceil((gameEndTime - Date.now()) / 1000));
+      const pct = (remaining / totalSec) * 100;
+      bar.style.width = pct + '%';
+      if (pct <= 15) bar.style.background = '#e74c3c';
+      else if (pct <= 30) bar.style.background = '#e67e22';
+      else bar.style.background = '#27ae60';
+      digits.textContent = fmtTime(remaining);
+      if (remaining <= 0) clearInterval(gameTimerInterval);
+    }
+
+    tick();
+    gameTimerInterval = setInterval(tick, 500);
+  }
+
+  // ── Declare picker ────────────────────────────────────────────────────────────
+  function openDeclarePicker() {
+    declareSelected = null;
+    const list = document.getElementById('overlay-loc-list');
+    list.innerHTML = allLocations.map(loc =>
+      `<button class="overlay-loc-btn" onclick="selectDeclare(this,'${loc.replace(/'/g,"\\'")}')">📍 ${loc}</button>`
+    ).join('');
+    document.getElementById('declare-overlay').classList.add('open');
+  }
+
+  function selectDeclare(btn, loc) {
+    document.querySelectorAll('.overlay-loc-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    declareSelected = loc;
+  }
+
+  function confirmDeclare() {
+    if (!declareSelected) return;
+    closeDeclareOverlay();
+    socket.emit('spy:declare', { location: declareSelected });
+  }
+
+  function closeDeclareOverlay() {
+    document.getElementById('declare-overlay').classList.remove('open');
+  }
+
+  // ── Vote ──────────────────────────────────────────────────────────────────────
+  function callVote() {
+    socket.emit('spy:call-vote');
+  }
+
+  function showVoteScreen(players) {
+    clearInterval(gameTimerInterval);
+    hasVoted = false;
+    allPlayers = players;
+    document.getElementById('v-count').textContent = 0;
+    document.getElementById('v-total').textContent = players.length;
+    document.getElementById('v-bar').style.width   = '0%';
+    document.getElementById('vote-wait').style.display = 'none';
+    document.getElementById('vote-list').innerHTML = players
+      .filter(p => p.id !== myId)
+      .map(p => `<button class="act-btn" id="vb-${p.id}" onclick="castVote('${p.id}')">🕵️ ${p.name}</button>`)
+      .join('');
+    show('s-vote');
+  }
+
+  function castVote(targetId) {
+    if (hasVoted) return;
+    hasVoted = true;
+    socket.emit('spy:vote', { targetId });
+    document.querySelectorAll('#vote-list .act-btn').forEach(b => b.disabled = true);
+    document.getElementById(`vb-${targetId}`)?.classList.add('voted');
+    document.getElementById('vote-wait').style.display = 'block';
+  }
+
+  // ── Spy guess screen ──────────────────────────────────────────────────────────
+  function showSpyGuess(spyId, spyName, locations) {
+    if (myId === spyId) {
+      document.getElementById('spy-guess-list').style.display = 'flex';
+      document.getElementById('spy-guess-wait').style.display = 'none';
+      document.getElementById('spy-guess-list').innerHTML = locations.map(loc =>
+        `<button class="act-btn" onclick="sendLocationGuess('${loc.replace(/'/g,"\\'")}', this)">📍 ${loc}</button>`
+      ).join('');
+    } else {
+      document.getElementById('spy-guess-list').style.display = 'none';
+      document.getElementById('spy-guess-wait').style.display = 'block';
+    }
+    show('s-spy-guess');
+  }
+
+  function sendLocationGuess(loc, btn) {
+    document.querySelectorAll('#spy-guess-list .act-btn').forEach(b => b.disabled = true);
+    btn.classList.add('voted');
+    socket.emit('spy:location-guess', { location: loc });
+  }
+
+  // ── Game over ─────────────────────────────────────────────────────────────────
+  function showGameOver(winner, spyId, location, reason, players) {
+    clearInterval(gameTimerInterval);
+    const banner = document.getElementById('go-banner');
+    if (winner === 'spy') {
+      banner.className = 'go-banner spy';
+      banner.innerHTML = '🕵️ สายลับ ชนะ!';
+    } else {
+      banner.className = 'go-banner village';
+      banner.innerHTML = '🏘️ ชาวเมือง ชนะ!';
+    }
+    document.getElementById('go-reason').textContent = reason;
+    const spyPlayer = players.find(p => p.id === spyId);
+    document.getElementById('go-spy').textContent = spyPlayer ? spyPlayer.name : '?';
+    document.getElementById('go-location').textContent = location;
+    document.getElementById('go-players').innerHTML = players.map(p =>
+      `<div class="go-result">
+        <span>${p.id === spyId ? '🕵️ ' : '👤 '}${p.name}${p.id === myId ? ' (คุณ)' : ''}</span>
+        ${p.id === spyId ? '<span style="font-size:12px;padding:2px 9px;border-radius:20px;background:#3a0000;color:#ff7070">สายลับ</span>' : '<span style="font-size:12px;padding:2px 9px;border-radius:20px;background:#1a1a1a;color:#aaa">ชาวเมือง</span>'}
+      </div>`
+    ).join('');
+    show('s-gameover');
+  }
+
+  // ── Socket events ─────────────────────────────────────────────────────────────
+
+  socket.on('spy:created', ({ code, playerId, players }) => {
+    myId = playerId; roomCode = code; isHost = true;
+    allPlayers = players;
+    renderLobby(players); show('s-lobby');
+  });
+
+  socket.on('spy:joined', ({ code, playerId, players }) => {
+    myId = playerId; roomCode = code; isHost = false;
+    allPlayers = players;
+    renderLobby(players); show('s-lobby');
+  });
+
+  socket.on('spy:lobby-update', ({ players }) => {
+    allPlayers = players;
+    renderLobby(players);
+  });
+
+  socket.on('spy:error', (msg) => {
+    const joinErr   = document.getElementById('join-err');
+    const createErr = document.getElementById('create-err');
+    if (document.getElementById('s-join').classList.contains('active'))     joinErr.textContent   = msg;
+    else if (document.getElementById('s-create').classList.contains('active')) createErr.textContent = msg;
+    else if (document.getElementById('s-lobby').classList.contains('active')) {
+      // Show as a temporary message
+      const warn = document.getElementById('lob-warn');
+      warn.textContent = msg; warn.style.display = 'block';
+      setTimeout(() => { warn.style.display = 'none'; }, 3000);
+    }
+  });
+
+  socket.on('spy:game-start', ({ isSpy: spy, location, role, gameSec: sec, locations }) => {
+    isSpy = spy;
+    myLocation = location;
+    myRole = role;
+    allLocations = locations;
+    gameSec = sec;
+    gameEndTime = Date.now() + sec * 1000;
+
+    // Show reveal first, then game after countdown
+    showReveal(spy, location, role);
+    setTimeout(() => {
+      showGame(spy, location, role, sec, locations);
+    }, 10000);
+  });
+
+  socket.on('spy:players', ({ players }) => {
+    allPlayers = players;
+  });
+
+  socket.on('spy:vote-start', ({ players }) => {
+    allPlayers = players;
+    showVoteScreen(players);
+  });
+
+  socket.on('spy:vote-update', ({ count, total }) => {
+    document.getElementById('v-count').textContent = count;
+    document.getElementById('v-total').textContent = total;
+    document.getElementById('v-bar').style.width   = total ? `${(count/total)*100}%` : '0%';
+  });
+
+  socket.on('spy:caught', ({ spyId, spyName, locations }) => {
+    showSpyGuess(spyId, spyName, locations);
+  });
+
+  socket.on('spy:gameover', ({ winner, spyId, location, reason, players }) => {
+    showGameOver(winner, spyId, location, reason, players);
+  });
+</script>
+</body>
+</html>
