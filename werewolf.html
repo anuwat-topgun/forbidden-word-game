@@ -262,6 +262,7 @@
     <h3>🩸 เลือกเหยื่อ</h3>
     <div id="wolf-vote-box" class="info-box wolf" style="display:none"></div>
     <div id="wolf-targets" class="act-list"></div>
+    <button id="wolf-confirm-btn" class="btn red" style="display:none;margin-top:4px" onclick="confirmWolfAct()">✅ ตกลง</button>
     <div id="wolf-wait" style="display:none;color:#555;font-size:14px;text-align:center;padding:8px 0">รอสมาชิกในทีมโหวต...</div>
   </div>
 
@@ -563,9 +564,26 @@
     document.getElementById('n-wolf').style.display = 'flex';
     document.getElementById('wolf-vote-box').style.display = 'none';
     document.getElementById('wolf-wait').style.display = 'none';
+    document.getElementById('wolf-confirm-btn').style.display = 'none';
     const targets = alivePlayers.filter(p => p.id !== myId && !wolfTeammateIds.includes(p.id));
     document.getElementById('wolf-targets').innerHTML = targets.map(p =>
-      `<button class="act-btn" id="wt-${p.id}" onclick="nightAct('${p.id}')">🩸 ${p.name}</button>`).join('');
+      `<button class="act-btn" id="wt-${p.id}" onclick="selectWolfTarget('${p.id}')">🩸 ${p.name}</button>`).join('');
+  }
+
+  let selectedWolfTargetId = null;
+
+  function selectWolfTarget(targetId) {
+    if (hasActedNight) return;
+    selectedWolfTargetId = targetId;
+    document.querySelectorAll('#wolf-targets .act-btn').forEach(b => b.classList.remove('picked'));
+    document.getElementById(`wt-${targetId}`)?.classList.add('picked');
+    document.getElementById('wolf-confirm-btn').style.display = 'block';
+  }
+
+  function confirmWolfAct() {
+    if (hasActedNight || !selectedWolfTargetId) return;
+    nightAct(selectedWolfTargetId);
+    document.getElementById('wolf-confirm-btn').style.display = 'none';
   }
   function showSeerPanel() {
     document.getElementById('n-seer').style.display = 'flex';
