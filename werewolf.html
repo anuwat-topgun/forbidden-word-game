@@ -145,9 +145,32 @@
     .idle-msg { text-align: center; color: #444; padding: 32px 0; font-size: 17px; }
     .idle-icon { font-size: 52px; margin-bottom: 12px; }
     .center { text-align: center; }
+
+    /* info FAB */
+    .info-fab { position: fixed; top: 16px; right: 16px; width: 36px; height: 36px; border-radius: 50%; background: #1e1e1e; border: 2px solid #333; color: #888; font-size: 15px; font-weight: bold; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 100; }
+    .info-fab.visible { display: flex; }
+
+    /* info modal */
+    .info-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: none; align-items: flex-end; justify-content: center; z-index: 200; }
+    .info-overlay.open { display: flex; }
+    .info-sheet { background: #161616; border-radius: 18px 18px 0 0; border-top: 2px solid #2a2a2a; padding: 20px 18px 36px; width: 100%; max-width: 480px; display: flex; flex-direction: column; gap: 8px; }
+    .info-sheet-title { font-size: 15px; font-weight: bold; color: #999; text-align: center; margin-bottom: 4px; }
+    .role-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; background: #1e1e1e; border-radius: 10px; font-size: 14px; }
+    .role-count { background: #2a2a2a; color: #eee; border-radius: 20px; padding: 2px 11px; font-size: 13px; font-weight: bold; }
   </style>
 </head>
 <body>
+
+<!-- ⓘ Info FAB -->
+<button id="info-fab" class="info-fab" onclick="toggleInfoModal()">i</button>
+
+<!-- Info modal -->
+<div id="info-overlay" class="info-overlay" onclick="closeInfoModal()">
+  <div class="info-sheet" onclick="event.stopPropagation()">
+    <div class="info-sheet-title">บทบาทในเกมนี้</div>
+    <div id="info-role-list" style="display:flex;flex-direction:column;gap:7px"></div>
+  </div>
+</div>
 
 <!-- ══ HOME : Step 1 — เลือก action ══ -->
 <div id="s-home" class="screen active">
@@ -421,10 +444,43 @@
   function ri(role)  { return ROLES[role] || ROLES.villager; }
   function tag(role) { return `<span class="tag ${role}">${ri(role).e} ${ri(role).n}</span>`; }
 
+  const GAME_SCREENS = new Set(['s-reveal','s-night','s-day','s-hunter']);
+
   function show(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
+    document.getElementById('info-fab').classList.toggle('visible', GAME_SCREENS.has(id));
+    closeInfoModal();
   }
+
+  function getRoleSummary(n) {
+    const wolves = n <= 6 ? 1 : n <= 9 ? 2 : 3;
+    const rows = [{ role: 'werewolf', count: wolves }, { role: 'seer', count: 1 }];
+    if (n >= 5)                rows.push({ role: 'bodyguard', count: 1 });
+    if (n >= 7)                rows.push({ role: 'hunter', count: 1 });
+    if (n >= 8)                rows.push({ role: 'mason', count: 2 });
+    if (n >= 9)                rows.push({ role: 'witch', count: 1 });
+    if (wolves >= 2 && n >= 8) rows.push({ role: 'minion', count: 1 });
+    const special = rows.reduce((s, r) => s + r.count, 0);
+    if (n - special > 0)       rows.push({ role: 'villager', count: n - special });
+    return rows;
+  }
+
+  function toggleInfoModal() {
+    const overlay = document.getElementById('info-overlay');
+    if (overlay.classList.contains('open')) { closeInfoModal(); return; }
+    const summary = getRoleSummary(allPlayers.length);
+    document.getElementById('info-role-list').innerHTML = summary.map(({ role, count }) => {
+      const r = ri(role);
+      return `<div class="role-row"><span>${r.e} ${r.n}</span><span class="role-count">×${count}</span></div>`;
+    }).join('');
+    overlay.classList.add('open');
+  }
+
+  function closeInfoModal() {
+    document.getElementById('info-overlay').classList.remove('open');
+  }
+
   function fmtTime(s) { return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}` }
 
   // ── HOME ─────────────────────────────────────────────────────────────────────
