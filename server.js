@@ -375,6 +375,23 @@ io.on('connection', socket => {
     socket.to(code.toUpperCase()).emit('lobby-update', { players: room.players });
   });
 
+  socket.on('restart-game', () => {
+    const room = rooms[socket.roomCode];
+    if (!room || room.phase !== 'ended') return;
+    if (!room.players.find(p => p.id === socket.id && p.isHost)) return;
+
+    clearTimeout(room.discussionTimer);
+    clearTimeout(room.confirmTimer);
+    room.phase = 'lobby'; room.day = 0;
+    room.nightActions = {}; room.wolfVotes = {}; room.nightPending = new Set();
+    room.votes = {}; room.confirmVotes = {}; room.proposedTarget = null;
+    room.witchUsedSave = false; room.witchUsedKill = false; room.witchWaiting = false;
+    room.discussionTimer = null; room.confirmTimer = null;
+    room.players.forEach(p => { p.role = null; p.alive = true; });
+
+    io.to(room.code).emit('game-restarted', { players: room.players });
+  });
+
   socket.on('start-game', () => {
     const room = rooms[socket.roomCode];
     if (!room) return;

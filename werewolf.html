@@ -328,6 +328,7 @@
     <div class="vbar-label">โหวตแล้ว <span id="v-count">0</span>/<span id="v-total">0</span> คน</div>
     <div class="vbar-wrap"><div class="vbar" id="v-bar" style="width:0%"></div></div>
     <div id="vote-list" class="act-list"></div>
+    <button id="vote-confirm-btn" class="btn green" style="display:none;margin-top:4px" onclick="castVote()">✅ ตกลง</button>
   </div>
 
   <!-- Confirmation (shown after all voted) -->
@@ -382,8 +383,9 @@
   <div class="sec-title">บทบาทของทุกคน</div>
   <div id="go-players" style="display:flex;flex-direction:column;gap:7px"></div>
   <div class="spacer"></div>
-  <button class="btn primary" onclick="location.href='/werewolf.html'">เล่นอีกครั้ง</button>
-  <button class="btn muted"   onclick="location.href='/'">กลับหน้าหลัก</button>
+  <button id="btn-restart" class="btn primary" style="display:none" onclick="restartGame()">▶ เล่นอีกครั้ง</button>
+  <div id="restart-wait" class="center" style="display:none;color:#444;font-size:14px">รอโฮสต์เริ่มเกมใหม่...</div>
+  <button class="btn muted" onclick="location.href='/'">กลับหน้าหลัก</button>
 </div>
 
 <script>
@@ -676,23 +678,36 @@
     }, 1000);
   }
 
+  let selectedVoteId = null;
+
   function openVoteUI(players) {
     const vb = document.getElementById('vote-block');
     vb.style.display = 'flex';
     document.getElementById('v-count').textContent = 0;
     document.getElementById('v-total').textContent = players.length;
     document.getElementById('v-bar').style.width   = '0%';
+    document.getElementById('vote-confirm-btn').style.display = 'none';
+    selectedVoteId = null;
     document.getElementById('vote-list').innerHTML = players
       .filter(p => p.id !== myId)
-      .map(p => `<button class="act-btn" id="vb-${p.id}" onclick="castVote('${p.id}')">🗳 ${p.name}</button>`)
+      .map(p => `<button class="act-btn" id="vb-${p.id}" onclick="selectVote('${p.id}')">🗳 ${p.name}</button>`)
       .join('');
   }
 
-  function castVote(targetId) {
-    if (hasVoted) return; hasVoted = true;
-    socket.emit('vote', { targetId });
+  function selectVote(targetId) {
+    if (hasVoted) return;
+    selectedVoteId = targetId;
+    document.querySelectorAll('#vote-list .act-btn').forEach(b => b.classList.remove('picked'));
+    document.getElementById(`vb-${targetId}`)?.classList.add('picked');
+    document.getElementById('vote-confirm-btn').style.display = 'block';
+  }
+
+  function castVote() {
+    if (hasVoted || !selectedVoteId) return; hasVoted = true;
+    socket.emit('vote', { targetId: selectedVoteId });
     document.querySelectorAll('#vote-list .act-btn').forEach(b => b.disabled=true);
-    document.getElementById(`vb-${targetId}`)?.classList.add('voted');
+    document.getElementById('vote-confirm-btn').style.display = 'none';
+    document.getElementById(`vb-${selectedVoteId}`)?.classList.add('voted');
   }
 
   function setVoteBar(count, total) {
@@ -770,7 +785,15 @@
         ${tag(p.role)}
       </div>`
     ).join('');
+
+    document.getElementById('btn-restart').style.display  = isHost ? 'block' : 'none';
+    document.getElementById('restart-wait').style.display = isHost ? 'none'  : 'block';
     show('s-gameover');
+  }
+
+  function restartGame() {
+    if (!isHost) return;
+    socket.emit('restart-game');
   }
 
   // ── SOCKET EVENTS ────────────────────────────────────────────────────────────
@@ -788,6 +811,13 @@
   socket.on('lobby-update', ({ players }) => {
     allPlayers = players.map(p => ({...p, alive:true}));
     renderLobby(players);
+  });
+  socket.on('game-restarted', ({ players }) => {
+    myRole = null; hasActedNight = false; hasVoted = false; witchActed = false; hasConfirmed = false;
+    wolfTeammateIds = []; masonTeammateIds = []; selectedVoteId = null;
+    clearInterval(revTimer); clearInterval(discussTimer); clearInterval(confirmTimer);
+    allPlayers = players.map(p => ({...p, alive:true}));
+    renderLobby(players); show('s-lobby');
   });
   socket.on('join-error', m => {
     // show error in whichever create/join screen is active
