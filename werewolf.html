@@ -161,6 +161,9 @@
 </head>
 <body>
 
+<!-- 🔊 Mute FAB -->
+<button id="mute-fab" class="info-fab" style="right:60px" onclick="toggleMute()">🔊</button>
+
 <!-- ⓘ Info FAB -->
 <button id="info-fab" class="info-fab" onclick="toggleInfoModal()">i</button>
 
@@ -429,6 +432,36 @@
   let hasActedNight = false, hasVoted = false, witchActed = false, hasConfirmed = false;
   let revTimer = null, discussTimer = null, confirmTimer = null;
 
+  // ── SPEECH ──────────────────────────────────────────────────────────────────
+  let _speechMuted = localStorage.getItem('ww-muted') === '1';
+  let _speechQ = [], _speaking = false;
+
+  function speak(text) {
+    if (_speechMuted || !window.speechSynthesis) return;
+    _speechQ.push(text);
+    if (!_speaking) _nextSpeech();
+  }
+  function _nextSpeech() {
+    if (!_speechQ.length) { _speaking = false; return; }
+    _speaking = true;
+    const u = new SpeechSynthesisUtterance(_speechQ.shift());
+    u.lang = 'th-TH'; u.rate = 0.88; u.pitch = 1.0;
+    u.onend = () => setTimeout(_nextSpeech, 300);
+    window.speechSynthesis.speak(u);
+  }
+  function stopSpeech() {
+    _speechQ = []; _speaking = false;
+    window.speechSynthesis?.cancel();
+  }
+  function toggleMute() {
+    _speechMuted = !_speechMuted;
+    localStorage.setItem('ww-muted', _speechMuted ? '1' : '0');
+    document.getElementById('mute-fab').textContent = _speechMuted ? '🔇' : '🔊';
+    if (_speechMuted) stopSpeech();
+  }
+  // init mute button label
+  document.getElementById('mute-fab').textContent = _speechMuted ? '🔇' : '🔊';
+
   const ROLES = {
     werewolf:  { e:'🐺', n:'มนุษย์หมาป่า', d:'ฆ่าชาวบ้านทุกคืน ชนะเมื่อ หมาป่า ≥ ชาวบ้านที่เหลือ' },
     villager:  { e:'👨‍🌾', n:'ชาวบ้าน',      d:'ไม่มีความสามารถพิเศษ ช่วยโหวตกำจัดมนุษย์หมาป่า' },
@@ -449,7 +482,9 @@
   function show(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
-    document.getElementById('info-fab').classList.toggle('visible', GAME_SCREENS.has(id));
+    const inGame = GAME_SCREENS.has(id);
+    document.getElementById('info-fab').classList.toggle('visible', inGame);
+    document.getElementById('mute-fab').classList.toggle('visible', inGame);
     closeInfoModal();
   }
 
@@ -587,6 +622,9 @@
     const me = allPlayers.find(p => p.id === myId);
     const alive = !me || me.alive !== false;
 
+    stopSpeech();
+    speak('กลางคืนมาถึงแล้ว ทุกคนหลับตา');
+
     if (isFirstNight)              showNightFirst();
     else if (!alive)               showIdle('👻', 'คุณตายแล้ว — กำลังสังเกตการณ์');
     else if (myRole==='werewolf')  showWolfPanel();
@@ -624,6 +662,7 @@
     const targets = alivePlayers.filter(p => p.id !== myId && !wolfTeammateIds.includes(p.id));
     document.getElementById('wolf-targets').innerHTML = targets.map(p =>
       `<button class="act-btn" id="wt-${p.id}" onclick="selectWolfTarget('${p.id}')">🩸 ${p.name}</button>`).join('');
+    speak('หมาป่าลืมตา เลือกเหยื่อของคุณ');
   }
 
   let selectedWolfTargetId = null;
@@ -646,12 +685,14 @@
     document.getElementById('seer-result').style.display = 'none';
     document.getElementById('seer-targets').innerHTML = alivePlayers.filter(p => p.id !== myId).map(p =>
       `<button class="act-btn" id="st-${p.id}" onclick="nightAct('${p.id}')">🔍 ${p.name}</button>`).join('');
+    speak('หมอดูลืมตา ตรวจสอบบทบาทผู้เล่นคนหนึ่ง');
   }
   function showBgPanel() {
     document.getElementById('n-bg').style.display = 'flex';
     document.getElementById('bg-done').style.display = 'none';
     document.getElementById('bg-targets').innerHTML = alivePlayers.map(p =>
       `<button class="act-btn" id="bt-${p.id}" onclick="nightAct('${p.id}')">🛡 ${p.name}${p.id===myId?' (ตัวเอง)':''}</button>`).join('');
+    speak('บอดี้การ์ดลืมตา เลือกคนที่จะปกป้อง');
   }
   function showWitchWaiting() {
     document.getElementById('n-idle').style.display = 'flex';
@@ -659,6 +700,7 @@
     document.getElementById('n-idle-msg').textContent  = 'รอดูว่าหมาป่าเลือกใคร...';
   }
   function showWitchPanel(wolfTarget, hasSave, hasKill) {
+    speak('แม่มดลืมตา');
     document.getElementById('n-idle').style.display  = 'none';
     document.getElementById('n-witch').style.display = 'flex';
     document.getElementById('witch-done').style.display = 'none';
@@ -705,6 +747,14 @@
   function showDay(day, eliminated, players, discussionSec) {
     alivePlayers = players; hasVoted = false; hasConfirmed = false;
     document.getElementById('day-day').textContent = day;
+
+    stopSpeech();
+    speak('รุ่งเช้ามาถึงแล้ว ทุกคนลืมตา');
+    if (eliminated.length === 0) {
+      speak('คืนนี้ไม่มีใครเสียชีวิต');
+    } else {
+      eliminated.forEach(p => speak(`${p.name} ไม่ตื่นขึ้นมาอีกแล้ว`));
+    }
 
     const anns = document.getElementById('day-anns');
     if (eliminated.length === 0) {
@@ -793,6 +843,7 @@
   // ── CONFIRMATION ─────────────────────────────────────────────────────────────
   function showConfirm(target, confirmSec) {
     hasConfirmed = false;
+    speak(target ? `ยืนยันการประหาร ${target.name} หรือไม่` : 'ยืนยันการประหาร');
     document.getElementById('vote-block').style.display    = 'none';
     document.getElementById('confirm-block').style.display = 'flex';
     document.getElementById('confirm-target-name').textContent = target ? target.name : '—';
@@ -859,6 +910,11 @@
         ${tag(p.role)}
       </div>`
     ).join('');
+
+    stopSpeech();
+    if (winner === 'werewolf') speak('มนุษย์หมาป่าชนะ!');
+    else if (winner === 'tanner') speak('ยาจกชนะ!');
+    else speak('ชาวบ้านชนะ!');
 
     document.getElementById('btn-restart').style.display  = isHost ? 'block' : 'none';
     document.getElementById('restart-wait').style.display = isHost ? 'none'  : 'block';
@@ -949,6 +1005,7 @@
     document.getElementById('discuss-block').style.display = 'none';
     alivePlayers = players;
     const me = allPlayers.find(p => p.id === myId);
+    speak('เริ่มโหวตเลือกผู้ต้องสงสัย');
     if (me?.alive !== false) openVoteUI(players);
   });
 
@@ -998,6 +1055,7 @@
   });
 
   socket.on('hunter-shoot', ({ players }) => {
+    speak('นายพรานลืมตา เลือกยิงใครสักคน');
     document.getElementById('hunter-targets').innerHTML = players.map(p =>
       `<button class="act-btn" onclick="hunterShoot('${p.id}')">🎯 ${p.name}</button>`).join('');
     show('s-hunter');
